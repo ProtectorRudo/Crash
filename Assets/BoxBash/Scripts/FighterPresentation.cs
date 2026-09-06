@@ -7,6 +7,8 @@ namespace BoxBash
     {
         private ArenaFighter fighter;
         private Transform visual;
+        private Transform groundShadow;
+        private Renderer groundShadowRenderer;
         private Vector3 baseScale;
         private Vector3 basePosition;
         private Coroutine reaction;
@@ -20,10 +22,14 @@ namespace BoxBash
             visual = visualRoot;
             baseScale = visual.localScale;
             basePosition = visual.localPosition;
+            groundShadow = transform.Find("Shadow");
+            if (groundShadow != null) groundShadowRenderer = groundShadow.GetComponent<Renderer>();
         }
 
         private void Update()
         {
+            UpdateGroundShadow();
+
             if (weightMarker != null && weightMarker.activeSelf)
             {
                 weightMarker.transform.localPosition = new Vector3(0f, 2.05f + Mathf.Sin(Time.time * 8f) * 0.08f, 0f);
@@ -42,6 +48,18 @@ namespace BoxBash
                 Vector3 locomotionScale = new Vector3(baseScale.x * stretch, baseScale.y / stretch, baseScale.z * stretch);
                 visual.localScale = Vector3.Lerp(visual.localScale, locomotionScale, Time.deltaTime * 18f);
             }
+        }
+
+        private void UpdateGroundShadow()
+        {
+            if (groundShadow == null || fighter == null) return;
+            Vector3 p = groundShadow.position;
+            p.x = transform.position.x;
+            p.y = 0.16f;
+            p.z = transform.position.z;
+            groundShadow.position = p;
+            if (groundShadowRenderer != null)
+                groundShadowRenderer.enabled = fighter.IsAlive && ArenaWorld.HasSafeFloor(transform.position, 0.82f);
         }
 
         public void Pickup() => Punch(new Vector3(1.08f, 0.91f, 1.08f), 0.13f);
@@ -83,6 +101,7 @@ namespace BoxBash
         {
             if (visual == null) return;
             if (weightMarker != null) weightMarker.SetActive(false);
+            if (groundShadowRenderer != null) groundShadowRenderer.enabled = false;
             StopAllCoroutines();
             StartCoroutine(EliminationRoutine());
         }
