@@ -20,6 +20,7 @@ namespace BoxBash
         public bool CanBePickedUp => !carried && !spent && kind != CrateKind.Nitro && kind != CrateKind.Gift;
         public bool CanBeKicked => !carried && !spent && kind != CrateKind.Nitro;
         public bool IsPrimed => !spent && (kind == CrateKind.Nitro || primed);
+        public float FuseRemaining => kind == CrateKind.TNT && primed && !spent ? Mathf.Max(0f, fuseDeadline - Time.time) : 0f;
         public ArenaFighter Owner { get; private set; }
         public ArenaFighter ReservedBy { get; private set; }
 
@@ -32,6 +33,7 @@ namespace BoxBash
         private float primedAt;
         private float fuseDeadline;
         private Vector3 baseScale;
+        private TextMesh labelMesh;
         private static readonly Collider[] explosionHits = new Collider[64];
 
         private void Awake()
@@ -100,6 +102,9 @@ namespace BoxBash
             }
             if (spent) return;
 
+            if (labelMesh == null && (kind == CrateKind.TNT || kind == CrateKind.Nitro))
+                labelMesh = GetComponentInChildren<TextMesh>();
+
             if (primed && kind == CrateKind.TNT)
             {
                 float remaining = Mathf.Max(0f, fuseDeadline - Time.time);
@@ -107,10 +112,12 @@ namespace BoxBash
                 float pulseSpeed = Mathf.Lerp(10f, 24f, urgency);
                 float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * Mathf.Lerp(0.035f, 0.085f, urgency);
                 transform.localScale = baseScale * pulse;
+                if (labelMesh != null) labelMesh.text = Mathf.CeilToInt(remaining).ToString();
             }
-            else if (!carried)
+            else
             {
-                transform.localScale = Vector3.Lerp(transform.localScale, baseScale, Time.deltaTime * 12f);
+                if (kind == CrateKind.TNT && labelMesh != null) labelMesh.text = "TNT";
+                if (!carried) transform.localScale = Vector3.Lerp(transform.localScale, baseScale, Time.deltaTime * 12f);
             }
         }
 
