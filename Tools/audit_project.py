@@ -29,6 +29,8 @@ for p in files.values():
         errors.append(f"brace mismatch: {p.name}")
     if stripped.count("(") != stripped.count(")"):
         errors.append(f"paren mismatch: {p.name}")
+    if "SetParent(owner:" in text:
+        errors.append(f"invalid Transform.SetParent named argument returned: {p.name}")
 
 for name in ("BotBrain.cs", "CarryableCrate.cs", "ArenaFighter.cs"):
     if name in files and "FindObjectsOfType" in files[name].read_text(encoding="utf-8-sig"):
@@ -38,12 +40,8 @@ tuning = files.get("SpaceBashTuning.cs")
 if tuning:
     t = tuning.read_text(encoding="utf-8-sig")
     required_tuning = (
-        "MatchSeconds = 90f",
-        "TntFuse = 3.0f",
-        "SpeedBootsDuration = 8.0f",
-        "SlowZDuration = 8.0f",
-        "ShieldDuration = 10.0f",
-        "WeightDuration = 8.0f",
+        "MatchSeconds = 90f", "TntFuse = 3.0f", "SpeedBootsDuration = 8.0f",
+        "SlowZDuration = 8.0f", "ShieldDuration = 10.0f", "WeightDuration = 8.0f",
     )
     for needle in required_tuning:
         if needle not in t:
@@ -64,6 +62,48 @@ if bootstrap_parts:
     if "AddComponent<AudioListener>" not in t:
         errors.append("runtime regression: generated camera has no AudioListener")
 
+bootstrap = files.get("PrototypeBootstrap.cs")
+if bootstrap:
+    t = bootstrap.read_text(encoding="utf-8-sig")
+    for needle in ("Purple Skyline Backdrop", "Future Tower", "Neon Windows"):
+        if needle not in t:
+            errors.append(f"visual regression: rooftop skyline element missing {needle}")
+    if "Distant Planet" in t or 'star.name = "Star"' in t:
+        errors.append("visual regression: outer-space backdrop returned")
+    if "cam.fieldOfView = 40f" not in t or "Quaternion.Euler(51.8f" not in t:
+        errors.append("visual regression: rooftop camera framing changed")
+    if t.count(".sharedMaterial") < 4:
+        errors.append("mobile regression: skyline stopped sharing repeated materials")
+
+arena = files.get("PrototypeBootstrapArena.cs")
+if arena:
+    t = arena.read_text(encoding="utf-8-sig")
+    for needle in ("Recessed Deck Face", "Deck Hazard Stripe", "Rail Hazard Stripe"):
+        if needle not in t:
+            errors.append(f"visual regression: metallic arena detail missing {needle}")
+    if "shadow.transform.SetParent(parent.parent, false)" not in t:
+        errors.append("visual regression: fighter shadow hierarchy changed unexpectedly")
+
+presentation = files.get("FighterPresentation.cs")
+if presentation:
+    t = presentation.read_text(encoding="utf-8-sig")
+    if "UpdateGroundShadow()" not in t or "ArenaWorld.HasSafeFloor(transform.position, 0.82f)" not in t:
+        errors.append("visual regression: fighter shadow no longer stays pinned to safe floor")
+
+match = files.get("MatchManager.cs")
+if match:
+    t = match.read_text(encoding="utf-8-sig")
+    if "float[] xs = { left1, left2, right1, right2 }" not in t:
+        errors.append("visual regression: four-player HUD is no longer top-aligned")
+    if "new Color(1f, 0.52f, 0.08f, 1f)" not in t:
+        errors.append("visual regression: central orange timer styling disappeared")
+
+breakable = files.get("BreakableTile.cs")
+if breakable:
+    t = breakable.read_text(encoding="utf-8-sig")
+    if "GetComponentsInChildren<Collider>(true)" not in t or "GetComponentsInChildren<Renderer>(true)" not in t:
+        errors.append("visual/runtime regression: detailed tile children can remain after a blast")
+
 content = files.get("PrototypeBootstrapContent.cs")
 if content:
     t = content.read_text(encoding="utf-8-sig")
@@ -76,6 +116,11 @@ if content:
         errors.append("fidelity regression: throw boost returned to the Space Bash spawn pool")
     if "PowerupKind.SlowZap" not in t or "PowerupKind.Weight" not in t or "PowerupKind.Shield" not in t:
         errors.append("fidelity regression: Space Bash special item pool incomplete")
+    for icon in ('kind == PowerupKind.Wumpa ? "+"', 'kind == PowerupKind.SpeedBoots ? ">>"', 'kind == PowerupKind.SlowZap ? "Z"', 'kind == PowerupKind.Weight ? "500"'):
+        if icon not in t:
+            errors.append(f"visual regression: readable pickup icon missing {icon}")
+    if "CreatePowerupIcon" not in t or t.count(".sharedMaterial") < 5:
+        errors.append("visual/mobile regression: pickup readability or material sharing disappeared")
 
 crate = files.get("CarryableCrate.cs")
 if crate:
@@ -133,4 +178,4 @@ if errors:
         print("-", error)
     sys.exit(1)
 
-print(f"AUDIT OK — {len(files)} gameplay scripts checked + Space Bash fidelity gates")
+print(f"AUDIT OK — {len(files)} gameplay scripts checked + Space Bash gameplay/visual fidelity gates")

@@ -6,14 +6,10 @@ namespace BoxBash
     public sealed class BreakableTile : MonoBehaviour
     {
         public bool IsBroken { get; private set; }
-        private Collider tileCollider;
-        private Renderer tileRenderer;
         private Vector3 startScale;
 
         private void Awake()
         {
-            tileCollider = GetComponent<Collider>();
-            tileRenderer = GetComponent<Renderer>();
             startScale = transform.localScale;
             ArenaWorld.Register(this);
         }
@@ -51,8 +47,11 @@ namespace BoxBash
                 transform.Rotate(0f, 210f * Time.deltaTime, 0f, Space.World);
                 yield return null;
             }
-            if (tileCollider != null) tileCollider.enabled = false;
-            if (tileRenderer != null) tileRenderer.enabled = false;
+
+            Collider[] colliders = GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++) if (colliders[i] != null) colliders[i].enabled = false;
+            Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++) if (renderers[i] != null) renderers[i].enabled = false;
         }
     }
 }

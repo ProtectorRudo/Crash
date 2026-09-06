@@ -6,9 +6,12 @@ namespace BoxBash
     {
         private void CreateArena()
         {
-            Material a = Mat(new Color(0.22f, 0.27f, 0.37f), 0.38f, 0.48f);
-            Material b = Mat(new Color(0.16f, 0.20f, 0.30f), 0.32f, 0.42f);
-            Material seam = Mat(new Color(0.055f, 0.07f, 0.11f), 0.55f, 0.32f);
+            Material a = Mat(new Color(0.18f, 0.21f, 0.27f), 0.48f, 0.42f);
+            Material b = Mat(new Color(0.12f, 0.15f, 0.21f), 0.42f, 0.36f);
+            Material inset = Mat(new Color(0.055f, 0.065f, 0.085f), 0.34f, 0.28f);
+            Material seam = Mat(new Color(0.035f, 0.042f, 0.060f), 0.58f, 0.28f);
+            Material hazardYellow = GlowMat(new Color(1f, 0.72f, 0.06f));
+            Material hazardDark = Mat(new Color(0.035f, 0.035f, 0.042f), 0.30f, 0.20f);
             float half = (Grid - 1) * Tile * 0.5f;
 
             for (int x = 0; x < Grid; x++)
@@ -19,8 +22,12 @@ namespace BoxBash
                 tile.transform.SetParent(world);
                 tile.transform.position = new Vector3(x * Tile - half, 0f, z * Tile - half);
                 tile.transform.localScale = new Vector3(Tile * 0.93f, 0.26f, Tile * 0.93f);
-                tile.GetComponent<Renderer>().material = ((x + z) % 2 == 0) ? a : b;
+                tile.GetComponent<Renderer>().sharedMaterial = ((x + z) % 2 == 0) ? a : b;
                 tile.AddComponent<BreakableTile>();
+                CreatePanelInset(tile.transform, inset);
+
+                if ((x * 3 + z * 5) % 11 == 0)
+                    CreateHazardPanel(tile.transform, hazardYellow, hazardDark, (x + z) % 2 == 0);
             }
 
             float arena = Grid * Tile;
@@ -29,13 +36,46 @@ namespace BoxBash
             CreateWall(new Vector3(-arena * 0.5f - 0.16f, 0.46f, 0f), new Vector3(0.26f, 0.92f, arena + 0.65f), seam);
             CreateWall(new Vector3(arena * 0.5f + 0.16f, 0.46f, 0f), new Vector3(0.26f, 0.92f, arena + 0.65f), seam);
 
-            Material hazard = GlowMat(new Color(1f, 0.31f, 0.08f));
-            for (int i = -4; i <= 4; i += 2)
+            for (int i = -4; i <= 4; i++)
             {
-                CreateRailLight(new Vector3(i * Tile, 0.90f, -arena * 0.5f - 0.31f), hazard);
-                CreateRailLight(new Vector3(i * Tile, 0.90f, arena * 0.5f + 0.31f), hazard);
-                CreateRailLight(new Vector3(-arena * 0.5f - 0.31f, 0.90f, i * Tile), hazard);
-                CreateRailLight(new Vector3(arena * 0.5f + 0.31f, 0.90f, i * Tile), hazard);
+                Material stripe = ((i + 4) % 2 == 0) ? hazardYellow : hazardDark;
+                CreateRailStripe(new Vector3(i * Tile, 0.91f, -arena * 0.5f - 0.31f), new Vector3(Tile * 0.78f, 0.10f, 0.11f), stripe);
+                CreateRailStripe(new Vector3(i * Tile, 0.91f, arena * 0.5f + 0.31f), new Vector3(Tile * 0.78f, 0.10f, 0.11f), stripe);
+                CreateRailStripe(new Vector3(-arena * 0.5f - 0.31f, 0.91f, i * Tile), new Vector3(0.11f, 0.10f, Tile * 0.78f), stripe);
+                CreateRailStripe(new Vector3(arena * 0.5f + 0.31f, 0.91f, i * Tile), new Vector3(0.11f, 0.10f, Tile * 0.78f), stripe);
+            }
+        }
+
+        private void CreatePanelInset(Transform tile, Material mat)
+        {
+            GameObject panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            panel.name = "Recessed Deck Face";
+            panel.transform.SetParent(tile, false);
+            panel.transform.localPosition = new Vector3(0f, 0.525f, 0f);
+            panel.transform.localScale = new Vector3(0.76f, 0.035f, 0.76f);
+            panel.GetComponent<Renderer>().sharedMaterial = mat;
+            Destroy(panel.GetComponent<Collider>());
+        }
+
+        private void CreateHazardPanel(Transform tile, Material yellow, Material dark, bool horizontal)
+        {
+            for (int i = -2; i <= 2; i++)
+            {
+                GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                bar.name = "Deck Hazard Stripe";
+                bar.transform.SetParent(tile, false);
+                if (horizontal)
+                {
+                    bar.transform.localPosition = new Vector3(i * 0.145f, 0.565f, 0f);
+                    bar.transform.localScale = new Vector3(0.12f, 0.035f, 0.56f);
+                }
+                else
+                {
+                    bar.transform.localPosition = new Vector3(0f, 0.565f, i * 0.145f);
+                    bar.transform.localScale = new Vector3(0.56f, 0.035f, 0.12f);
+                }
+                bar.GetComponent<Renderer>().sharedMaterial = ((i + 2) % 2 == 0) ? yellow : dark;
+                Destroy(bar.GetComponent<Collider>());
             }
         }
 
@@ -46,18 +86,18 @@ namespace BoxBash
             wall.transform.SetParent(world);
             wall.transform.position = pos;
             wall.transform.localScale = scale;
-            wall.GetComponent<Renderer>().material = mat;
+            wall.GetComponent<Renderer>().sharedMaterial = mat;
         }
 
-        private void CreateRailLight(Vector3 pos, Material mat)
+        private void CreateRailStripe(Vector3 pos, Vector3 scale, Material mat)
         {
-            GameObject light = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            light.name = "Hazard Light";
-            light.transform.SetParent(world);
-            light.transform.position = pos;
-            light.transform.localScale = new Vector3(0.34f, 0.10f, 0.12f);
-            light.GetComponent<Renderer>().material = mat;
-            Destroy(light.GetComponent<Collider>());
+            GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stripe.name = "Rail Hazard Stripe";
+            stripe.transform.SetParent(world);
+            stripe.transform.position = pos;
+            stripe.transform.localScale = scale;
+            stripe.GetComponent<Renderer>().sharedMaterial = mat;
+            Destroy(stripe.GetComponent<Collider>());
         }
 
         private void CreateFighters()
@@ -127,7 +167,7 @@ namespace BoxBash
             else visual.transform.localScale = new Vector3(0.86f, 0.86f, 0.86f);
             Destroy(visual.GetComponent<Collider>());
             Material bodyMat = Mat(color, style == 2 ? 0.38f : 0.12f, 0.68f);
-            visual.GetComponent<Renderer>().material = bodyMat;
+            visual.GetComponent<Renderer>().sharedMaterial = bodyMat;
             CreateCharacterDetails(visual.transform, bodyMat, style);
             return visual.transform;
         }
@@ -144,7 +184,7 @@ namespace BoxBash
                 eye.transform.SetParent(parent, false);
                 eye.transform.localPosition = new Vector3(0.18f * s, 0.28f, 0.45f);
                 eye.transform.localScale = new Vector3(0.22f, 0.25f, 0.12f);
-                eye.GetComponent<Renderer>().material = white;
+                eye.GetComponent<Renderer>().sharedMaterial = white;
                 Destroy(eye.GetComponent<Collider>());
 
                 GameObject pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -152,7 +192,7 @@ namespace BoxBash
                 pupil.transform.SetParent(parent, false);
                 pupil.transform.localPosition = new Vector3(0.18f * s, 0.28f, 0.53f);
                 pupil.transform.localScale = Vector3.one * 0.095f;
-                pupil.GetComponent<Renderer>().material = dark;
+                pupil.GetComponent<Renderer>().sharedMaterial = dark;
                 Destroy(pupil.GetComponent<Collider>());
             }
 
@@ -163,7 +203,7 @@ namespace BoxBash
                 hand.transform.SetParent(parent, false);
                 hand.transform.localPosition = new Vector3(0.53f * s, -0.02f, 0.04f);
                 hand.transform.localScale = new Vector3(0.25f, 0.28f, 0.25f);
-                hand.GetComponent<Renderer>().material = bodyMat;
+                hand.GetComponent<Renderer>().sharedMaterial = bodyMat;
                 Destroy(hand.GetComponent<Collider>());
             }
 
@@ -180,7 +220,7 @@ namespace BoxBash
                 visor.transform.SetParent(parent, false);
                 visor.transform.localPosition = new Vector3(0f, 0.18f, 0.54f);
                 visor.transform.localScale = new Vector3(0.56f, 0.12f, 0.06f);
-                visor.GetComponent<Renderer>().material = GlowMat(new Color(0.20f, 0.88f, 1f));
+                visor.GetComponent<Renderer>().sharedMaterial = GlowMat(new Color(0.20f, 0.88f, 1f));
                 Destroy(visor.GetComponent<Collider>());
             }
             if (style == 3)
@@ -192,17 +232,17 @@ namespace BoxBash
                     ear.transform.SetParent(parent, false);
                     ear.transform.localPosition = new Vector3(0.47f * s, 0.28f, 0f);
                     ear.transform.localScale = new Vector3(0.26f, 0.40f, 0.22f);
-                    ear.GetComponent<Renderer>().material = bodyMat;
+                    ear.GetComponent<Renderer>().sharedMaterial = bodyMat;
                     Destroy(ear.GetComponent<Collider>());
                 }
             }
 
             GameObject shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             shadow.name = "Shadow";
-            shadow.transform.SetParent(parent, false);
-            shadow.transform.localPosition = new Vector3(0f, -1.0f, 0f);
-            shadow.transform.localScale = new Vector3(0.82f, 0.022f, 0.62f);
-            shadow.GetComponent<Renderer>().material = Mat(new Color(0.018f, 0.022f, 0.038f), 0f, 0.05f);
+            shadow.transform.SetParent(parent.parent, false);
+            shadow.transform.localPosition = new Vector3(0f, -0.83f, 0f);
+            shadow.transform.localScale = new Vector3(0.62f, 0.018f, 0.48f);
+            shadow.GetComponent<Renderer>().sharedMaterial = dark;
             Destroy(shadow.GetComponent<Collider>());
         }
 
@@ -213,7 +253,7 @@ namespace BoxBash
             antenna.transform.SetParent(parent, false);
             antenna.transform.localPosition = new Vector3(x, 0.88f, 0f);
             antenna.transform.localScale = new Vector3(0.055f, 0.20f, 0.055f);
-            antenna.GetComponent<Renderer>().material = mat;
+            antenna.GetComponent<Renderer>().sharedMaterial = mat;
             Destroy(antenna.GetComponent<Collider>());
         }
     }
