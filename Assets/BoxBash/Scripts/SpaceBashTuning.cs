@@ -1,8 +1,7 @@
 namespace BoxBash
 {
     /// <summary>
-    /// Central tuning for the Space-Bash-style ruleset. Values live here so the first phone playtest
-    /// can be tuned without hunting through many scripts.
+    /// Central tuning for the Space-Bash-style ruleset.
     /// </summary>
     public static class SpaceBashTuning
     {
@@ -23,7 +22,13 @@ namespace BoxBash
         public const float HeavyDamage = 34f;
         public const float TntExplosionDamage = 42f;
         public const float NitroExplosionDamage = 48f;
-        public const float TntFuse = 1.55f;
-        public const float NitroFuse = 0.32f;
+
+        public const float TntFuse = 3.0f;
+        public const float NitroFuse = 0.0f;
+        public const float SpeedBootsDuration = 8.0f;
+        public const float SlowZDuration = 8.0f;
+        public const float ShieldDuration = 10.0f;
+        public const float WeightDuration = 8.0f;
+        public const float WumpaHeal = 20f;
     }
 }

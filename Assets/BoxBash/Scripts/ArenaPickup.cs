@@ -45,11 +45,11 @@ namespace BoxBash
             switch (kind)
             {
                 case PowerupKind.Wumpa: return 0.25f + (1f - fighter.Health / fighter.maxHealth) * 1.6f;
-                case PowerupKind.Shield: return 1.15f;
-                case PowerupKind.SpeedBoots: return 0.88f;
-                case PowerupKind.ThrowBoost: return 0.82f;
-                case PowerupKind.SlowZap: return 0.70f;
-                case PowerupKind.Weight: return 0.76f;
+                case PowerupKind.Shield: return 1.20f;
+                case PowerupKind.SpeedBoots: return 0.95f;
+                case PowerupKind.SlowZap: return 0.16f;
+                case PowerupKind.Weight: return 0.10f;
+                case PowerupKind.ThrowBoost: return 0.05f;
                 default: return 0.5f;
             }
         }
@@ -60,22 +60,22 @@ namespace BoxBash
             switch (kind)
             {
                 case PowerupKind.Wumpa:
-                    fighter.Heal(30f);
+                    fighter.Heal(SpaceBashTuning.WumpaHeal);
                     break;
                 case PowerupKind.SpeedBoots:
-                    fighter.ApplySpeedBoost(1.34f, 6.5f);
-                    break;
-                case PowerupKind.ThrowBoost:
-                    fighter.ApplyThrowBoost(1.30f, 7.5f);
+                    fighter.ApplySpeedBoost(1.34f, SpaceBashTuning.SpeedBootsDuration);
                     break;
                 case PowerupKind.Shield:
-                    fighter.ApplyShield(5.5f);
+                    fighter.ApplyShield(SpaceBashTuning.ShieldDuration);
                     break;
                 case PowerupKind.SlowZap:
-                    fighter.ApplySlowToNearestOpponent(0.62f, 4.2f);
+                    fighter.ApplySlow(0.52f, SpaceBashTuning.SlowZDuration);
                     break;
                 case PowerupKind.Weight:
-                    PrototypeBootstrap.Instance?.DropWeightOnOpponent(fighter);
+                    fighter.GiveWeight(SpaceBashTuning.WeightDuration);
+                    break;
+                case PowerupKind.ThrowBoost:
+                    fighter.ApplyThrowBoost(1.20f, 5f);
                     break;
             }
 

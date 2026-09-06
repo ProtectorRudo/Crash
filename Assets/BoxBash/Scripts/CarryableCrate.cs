@@ -17,9 +17,10 @@ namespace BoxBash
         public float fuseSeconds = SpaceBashTuning.TntFuse;
         public float CarryMoveMultiplier { get; private set; } = 1f;
 
-        public bool CanBePickedUp => !carried && !primed && !spent && kind != CrateKind.Nitro && kind != CrateKind.Gift;
-        public bool CanBeKicked => !carried && !spent;
-        public bool IsPrimed => primed && !spent;
+        public bool CanBePickedUp => !carried && !spent && kind != CrateKind.Nitro && kind != CrateKind.Gift;
+        public bool CanBeKicked => !carried && !spent && kind != CrateKind.Nitro;
+        public bool IsPrimed => !spent && (kind == CrateKind.Nitro || primed);
+        public float FuseRemaining => kind == CrateKind.TNT && primed && !spent ? Mathf.Max(0f, fuseDeadline - Time.time) : 0f;
         public ArenaFighter Owner { get; private set; }
         public ArenaFighter ReservedBy { get; private set; }
 
@@ -30,7 +31,9 @@ namespace BoxBash
         private bool spent;
         private float thrownAt;
         private float primedAt;
+        private float fuseDeadline;
         private Vector3 baseScale;
+        private TextMesh labelMesh;
         private static readonly Collider[] explosionHits = new Collider[64];
 
         private void Awake()
@@ -98,15 +101,23 @@ namespace BoxBash
                 return;
             }
             if (spent) return;
-            if (primed && (kind == CrateKind.TNT || kind == CrateKind.Nitro) && !carried)
+
+            if (labelMesh == null && (kind == CrateKind.TNT || kind == CrateKind.Nitro))
+                labelMesh = GetComponentInChildren<TextMesh>();
+
+            if (primed && kind == CrateKind.TNT)
             {
-                float speed = kind == CrateKind.Nitro ? 22f : 12f;
-                float pulse = 1f + Mathf.Sin((Time.time - primedAt) * speed) * 0.065f;
+                float remaining = Mathf.Max(0f, fuseDeadline - Time.time);
+                float urgency = 1f - Mathf.Clamp01(remaining / Mathf.Max(0.01f, fuseSeconds));
+                float pulseSpeed = Mathf.Lerp(10f, 24f, urgency);
+                float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * Mathf.Lerp(0.035f, 0.085f, urgency);
                 transform.localScale = baseScale * pulse;
+                if (labelMesh != null) labelMesh.text = Mathf.CeilToInt(remaining).ToString();
             }
-            else if (!carried)
+            else
             {
-                transform.localScale = Vector3.Lerp(transform.localScale, baseScale, Time.deltaTime * 12f);
+                if (kind == CrateKind.TNT && labelMesh != null) labelMesh.text = "TNT";
+                if (!carried) transform.localScale = Vector3.Lerp(transform.localScale, baseScale, Time.deltaTime * 12f);
             }
         }
 
@@ -131,11 +142,18 @@ namespace BoxBash
         {
             if (!CanBePickedUp || fighter == null) return false;
             if (ReservedBy != null && ReservedBy != fighter && !fighter.IsHuman) return false;
+
             carried = true;
-            primed = false;
             ReservedBy = null;
             Owner = fighter;
-            StopAllCoroutines();
+
+            if (kind == CrateKind.TNT) PrimeTntIfNeeded();
+            else
+            {
+                primed = false;
+                StopAllCoroutines();
+            }
+
             body.velocity = Vector3.zero;
             body.angularVelocity = Vector3.zero;
             body.isKinematic = true;
@@ -158,14 +176,23 @@ namespace BoxBash
             body.isKinematic = false;
             body.velocity = direction.normalized * speed + Vector3.up * lift;
             body.angularVelocity = new Vector3(4.2f, 6.2f, 3.8f);
-            primed = true;
-            primedAt = Time.time;
             thrownAt = Time.time;
 
-            if (kind == CrateKind.TNT) StartCoroutine(Fuse(fuseSeconds));
-            else if (kind == CrateKind.Nitro) StartCoroutine(Fuse(fuseSeconds));
-            else if (kind == CrateKind.Normal) StartCoroutine(ExpireSolidAfterThrow(0.78f));
-            else if (kind == CrateKind.Heavy) StartCoroutine(ExpireSolidAfterThrow(0.92f));
+            if (kind == CrateKind.TNT)
+            {
+                PrimeTntIfNeeded();
+            }
+            else if (kind == CrateKind.Nitro)
+            {
+                Explode();
+            }
+            else
+            {
+                primed = true;
+                primedAt = Time.time;
+                if (kind == CrateKind.Normal) StartCoroutine(ExpireSolidAfterThrow(0.78f));
+                else if (kind == CrateKind.Heavy) StartCoroutine(ExpireSolidAfterThrow(0.92f));
+            }
         }
 
         public void Kick(ArenaFighter owner, Vector3 direction, float speed)
@@ -173,16 +200,10 @@ namespace BoxBash
             if (!CanBeKicked) return;
             Owner = owner;
             ReservedBy = null;
+
             if (kind == CrateKind.Gift)
             {
                 OpenGift();
-                return;
-            }
-            if (kind == CrateKind.Nitro)
-            {
-                primed = true;
-                primedAt = Time.time;
-                Explode();
                 return;
             }
 
@@ -191,37 +212,59 @@ namespace BoxBash
             hitbox.enabled = true;
             body.velocity = direction.normalized * speed + Vector3.up * 0.18f;
             body.angularVelocity = new Vector3(0f, 8f, 0f);
-            primed = true;
-            primedAt = Time.time;
             thrownAt = Time.time;
+
             if (kind == CrateKind.TNT)
             {
-                StopAllCoroutines();
-                StartCoroutine(Fuse(fuseSeconds));
+                PrimeTntIfNeeded();
             }
-            else if (kind == CrateKind.Normal) StartCoroutine(ExpireSolidAfterThrow(0.72f));
-            else if (kind == CrateKind.Heavy) StartCoroutine(ExpireSolidAfterThrow(0.86f));
+            else
+            {
+                primed = true;
+                primedAt = Time.time;
+                if (kind == CrateKind.Normal) StartCoroutine(ExpireSolidAfterThrow(0.72f));
+                else if (kind == CrateKind.Heavy) StartCoroutine(ExpireSolidAfterThrow(0.86f));
+            }
         }
 
         public void Drop(Vector3 position)
         {
             if (spent) return;
             carried = false;
-            primed = false;
             ReservedBy = null;
             Owner = null;
-            StopAllCoroutines();
             transform.SetParent(null, true);
             transform.position = position;
             transform.localScale = baseScale;
             hitbox.enabled = true;
             body.isKinematic = false;
             body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+
+            if (kind == CrateKind.TNT)
+            {
+                PrimeTntIfNeeded();
+            }
+            else
+            {
+                primed = false;
+                StopAllCoroutines();
+            }
         }
 
-        private IEnumerator Fuse(float seconds)
+        private void PrimeTntIfNeeded()
         {
-            yield return new WaitForSeconds(seconds);
+            if (spent || kind != CrateKind.TNT || primed) return;
+            primed = true;
+            primedAt = Time.time;
+            fuseDeadline = Time.time + fuseSeconds;
+            StopAllCoroutines();
+            StartCoroutine(TntFuseRoutine());
+        }
+
+        private IEnumerator TntFuseRoutine()
+        {
+            while (!spent && primed && Time.time < fuseDeadline) yield return null;
             if (!spent && primed) Explode();
         }
 
@@ -235,6 +278,17 @@ namespace BoxBash
         {
             if (spent) return;
             ArenaFighter fighter = collision.collider.GetComponentInParent<ArenaFighter>();
+            CarryableCrate other = collision.collider.GetComponentInParent<CarryableCrate>();
+
+            if (kind == CrateKind.Nitro && !carried)
+            {
+                if (fighter != null || (other != null && other != this) || collision.relativeVelocity.sqrMagnitude > 1.0f)
+                {
+                    Owner = null;
+                    Explode();
+                }
+                return;
+            }
 
             if (!primed)
             {
@@ -243,11 +297,11 @@ namespace BoxBash
                     OpenGift();
                     return;
                 }
-                if (kind == CrateKind.Nitro && fighter != null)
+
+                if (kind == CrateKind.TNT && fighter != null)
                 {
-                    Owner = null;
-                    primed = true;
-                    Explode();
+                    PrimeTntIfNeeded();
+                    return;
                 }
                 return;
             }
@@ -258,20 +312,23 @@ namespace BoxBash
                 Vector3 away = fighter.transform.position - transform.position;
                 away.y = 0.18f;
                 fighter.ApplyDamage(impactDamage, away.normalized * 5.2f + Vector3.up * 1.15f, Owner);
-                if (kind == CrateKind.TNT || kind == CrateKind.Nitro) Explode();
+                if (kind == CrateKind.TNT) Explode();
                 else BreakSolid();
                 return;
             }
 
-            CarryableCrate other = collision.collider.GetComponentInParent<CarryableCrate>();
             if (other != null && other != this && other.kind == CrateKind.Gift) other.OpenGift();
-
-            if (kind == CrateKind.Nitro && collision.relativeVelocity.sqrMagnitude > 4f) Explode();
         }
 
         public void ChainReact()
         {
             if (spent || (kind != CrateKind.TNT && kind != CrateKind.Nitro)) return;
+            if (kind == CrateKind.Nitro)
+            {
+                Explode();
+                return;
+            }
+
             primed = true;
             primedAt = Time.time;
             StopAllCoroutines();
@@ -312,11 +369,16 @@ namespace BoxBash
 
             Vector3 center = transform.position;
             int hitCount = Physics.OverlapSphereNonAlloc(center, explosionRadius, explosionHits);
+            HashSet<ArenaFighter> damagedFighters = new HashSet<ArenaFighter>();
+            HashSet<CarryableCrate> reactedCrates = new HashSet<CarryableCrate>();
+
             for (int i = 0; i < hitCount; i++)
             {
                 Collider col = explosionHits[i];
+                if (col == null) continue;
+
                 ArenaFighter fighter = col.GetComponentInParent<ArenaFighter>();
-                if (fighter != null)
+                if (fighter != null && damagedFighters.Add(fighter))
                 {
                     Vector3 delta = fighter.transform.position - center;
                     float falloff = 1f - Mathf.Clamp01(delta.magnitude / explosionRadius);
@@ -325,11 +387,11 @@ namespace BoxBash
                         impulseDirection * Mathf.Lerp(4.4f, 7.6f, falloff) + Vector3.up * 1.8f, Owner);
                 }
 
-                CarryableCrate other = col.GetComponentInParent<CarryableCrate>();
-                if (other != null && other != this)
+                CarryableCrate otherCrate = col.GetComponentInParent<CarryableCrate>();
+                if (otherCrate != null && otherCrate != this && reactedCrates.Add(otherCrate))
                 {
-                    if (other.kind == CrateKind.Gift) other.OpenGift();
-                    else other.ChainReact();
+                    if (otherCrate.kind == CrateKind.Gift) otherCrate.OpenGift();
+                    else otherCrate.ChainReact();
                 }
             }
 

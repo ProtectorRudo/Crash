@@ -15,6 +15,7 @@ namespace BoxBash
         private AudioClip explosionClip;
         private AudioClip jumpClip;
         private AudioClip powerupClip;
+        private AudioClip weightClip;
 
         public void Bind(Camera target)
         {
@@ -29,6 +30,7 @@ namespace BoxBash
             explosionClip = Noise("explosion", 0.18f, 0.55f);
             jumpClip = Tone("jump", 410f, 0.06f, 0.20f);
             powerupClip = Tone("power", 850f, 0.11f, 0.28f);
+            weightClip = Tone("weight", 180f, 0.10f, 0.30f);
         }
 
         public void Pickup(Vector3 position)
@@ -78,8 +80,18 @@ namespace BoxBash
 
         public void Powerup(Vector3 position, PowerupKind kind)
         {
-            SpawnBurst(position, 18, 0.10f, 3.0f, 0.50f, new Color(0.42f, 1f, 0.86f));
-            Play(powerupClip, 0.88f);
+            Color color = kind == PowerupKind.SlowZap || kind == PowerupKind.Weight
+                ? new Color(0.72f, 0.48f, 1f)
+                : new Color(0.42f, 1f, 0.86f);
+            SpawnBurst(position, 18, 0.10f, 3.0f, 0.50f, color);
+            Play(kind == PowerupKind.Weight ? weightClip : powerupClip, 0.88f);
+        }
+
+        public void WeightPass(Vector3 position)
+        {
+            SpawnBurst(position + Vector3.up, 10, 0.08f, 2.1f, 0.32f, new Color(0.78f, 0.80f, 0.86f));
+            Play(weightClip, 0.82f);
+            Shake(0.05f, 0.06f);
         }
 
         public void ShieldBlock(Vector3 position)
@@ -168,6 +180,7 @@ namespace BoxBash
             if (explosionClip != null) Destroy(explosionClip);
             if (jumpClip != null) Destroy(jumpClip);
             if (powerupClip != null) Destroy(powerupClip);
+            if (weightClip != null) Destroy(weightClip);
         }
 
         private AudioClip Tone(string name, float frequency, float seconds, float amplitude)

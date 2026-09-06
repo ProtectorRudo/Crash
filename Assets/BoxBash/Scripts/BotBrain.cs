@@ -48,6 +48,13 @@ namespace BoxBash
                 return;
             }
 
+            if (fighter.HasWeight)
+            {
+                ReleaseCrate();
+                ChaseToPassWeight();
+                return;
+            }
+
             if (fighter.CarriedCrate != null)
             {
                 ReleaseCrate();
@@ -56,7 +63,8 @@ namespace BoxBash
             }
 
             ArenaPickup pickup = ArenaWorld.BestPickup(fighter, fighter.Health < 48f ? 8f : 5.2f);
-            if (pickup != null && (fighter.Health < 58f || Random.value < 0.18f + skill * 0.22f))
+            if (pickup != null && pickup.UtilityFor(fighter) > 0.20f &&
+                (fighter.Health < 58f || Random.value < 0.18f + skill * 0.22f))
             {
                 Vector3 pd = pickup.transform.position - transform.position;
                 Vector2 towardPickup = new Vector2(pd.x, pd.z).normalized;
@@ -65,7 +73,7 @@ namespace BoxBash
             }
 
             CarryableCrate kickable = ArenaWorld.NearestKickableCrate(fighter, 1.18f);
-            if (kickable != null && !kickable.CanBePickedUp && Random.value < 0.62f)
+            if (kickable != null && Random.value < Mathf.Lerp(0.15f, 0.42f, skill))
             {
                 Vector3 d = kickable.transform.position - transform.position;
                 fighter.SetMoveInput(new Vector2(d.x, d.z).normalized * 0.35f);
@@ -108,6 +116,27 @@ namespace BoxBash
             WanderSafely();
         }
 
+        private void ChaseToPassWeight()
+        {
+            ArenaFighter target = PickOpponent();
+            if (target == null)
+            {
+                WanderSafely();
+                return;
+            }
+
+            Vector3 d = target.transform.position - transform.position;
+            d.y = 0f;
+            Vector2 toward = new Vector2(d.x, d.z).normalized;
+            fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, toward));
+
+            if (fighter.WeightRemaining < 2.2f && Time.time >= nextJumpThought && Random.value < 0.28f)
+            {
+                nextJumpThought = Time.time + 0.55f;
+                fighter.Jump();
+            }
+        }
+
         private void AttackWithCrate()
         {
             ArenaFighter target = PickOpponent();
@@ -122,7 +151,14 @@ namespace BoxBash
             float distance = d.magnitude;
             Vector2 toward = new Vector2(d.x, d.z).normalized;
             float idealRange = Mathf.Lerp(2.7f, 4.7f, skill);
-            if (fighter.CarriedCrate != null && fighter.CarriedCrate.kind == CrateKind.Heavy) idealRange *= 0.82f;
+
+            if (fighter.CarriedCrate != null && fighter.CarriedCrate.kind == CrateKind.TNT &&
+                fighter.CarriedCrate.FuseRemaining < 1.25f)
+            {
+                fighter.SetMoveInput(toward);
+                fighter.ThrowCarried();
+                return;
+            }
 
             if (distance > idealRange + 0.65f)
             {
