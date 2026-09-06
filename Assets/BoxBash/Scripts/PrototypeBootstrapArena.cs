@@ -239,7 +239,7 @@ namespace BoxBash
 
             GameObject shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             shadow.name = "Shadow";
-            shadow.transform.SetParent(owner: parent.parent, worldPositionStays: false);
+            shadow.transform.SetParent(parent.parent, false);
             shadow.transform.localPosition = new Vector3(0f, -0.83f, 0f);
             shadow.transform.localScale = new Vector3(0.62f, 0.018f, 0.48f);
             shadow.GetComponent<Renderer>().sharedMaterial = dark;
