@@ -187,7 +187,8 @@ namespace BoxBash
             v.y = Mathf.Max(0f, v.y);
             body.velocity = v;
             float activeSlow = Time.time < slowUntil ? slowMultiplier : 1f;
-            body.AddForce(Vector3.up * jumpImpulse * activeSlow, ForceMode.Impulse);
+            float bootJumpMultiplier = Time.time < speedBoostUntil ? 1.18f : 1f;
+            body.AddForce(Vector3.up * jumpImpulse * activeSlow * bootJumpMultiplier, ForceMode.Impulse);
             presentation?.Jump();
             PrototypeBootstrap.Feel?.Jump(transform.position);
             return true;
@@ -196,13 +197,48 @@ namespace BoxBash
         public bool Kick()
         {
             if (!CanAct() || Time.time < nextKickAt) return false;
+
             CarryableCrate crate = ArenaWorld.NearestKickableCrate(this, 1.35f);
-            if (crate == null) return false;
+            if (crate != null)
+            {
+                nextKickAt = Time.time + 0.42f;
+                crate.Kick(this, Facing, 8.6f);
+                presentation?.Kick();
+                PrototypeBootstrap.Feel?.Kick(transform.position + Facing * 0.7f);
+                return true;
+            }
+
+            ArenaFighter opponent = NearestKickableOpponent(1.28f);
+            if (opponent == null) return false;
+
             nextKickAt = Time.time + 0.42f;
-            crate.Kick(this, Facing, 8.6f);
+            Vector3 impulse = Facing.normalized * 3.4f + Vector3.up * 0.62f;
+            opponent.ApplyDamage(8f, impulse, this);
             presentation?.Kick();
-            PrototypeBootstrap.Feel?.Kick(transform.position + Facing * 0.7f);
+            PrototypeBootstrap.Feel?.Kick(opponent.transform.position + Vector3.up * 0.5f);
             return true;
+        }
+
+        private ArenaFighter NearestKickableOpponent(float radius)
+        {
+            ArenaFighter best = null;
+            float bestSqr = radius * radius;
+            IReadOnlyList<ArenaFighter> fighters = ArenaWorld.Fighters;
+            Vector3 facing = Facing.sqrMagnitude > 0.01f ? Facing.normalized : transform.forward;
+
+            for (int i = 0; i < fighters.Count; i++)
+            {
+                ArenaFighter other = fighters[i];
+                if (other == null || other == this || !other.IsAlive) continue;
+                Vector3 delta = other.transform.position - transform.position;
+                delta.y = 0f;
+                float sqr = delta.sqrMagnitude;
+                if (sqr < 0.01f || sqr > bestSqr) continue;
+                if (Vector3.Dot(facing, delta.normalized) < 0.18f) continue;
+                bestSqr = sqr;
+                best = other;
+            }
+            return best;
         }
 
         private bool CanAct() => IsAlive && ControlsEnabled && Time.time >= stunnedUntil;
