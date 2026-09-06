@@ -36,15 +36,18 @@ namespace BoxBash
         public Vector2 MoveInput { get; private set; }
         public Rigidbody Body => body;
         public bool IsGrounded => GroundedCheck();
-        public bool Shielded => Time.time < shieldUntil;
+        public bool Shielded => shieldCharges > 0 && Time.time < shieldUntil;
+        public bool HasWeight => weightDeadline > Time.time;
+        public float WeightRemaining => HasWeight ? Mathf.Max(0f, weightDeadline - Time.time) : 0f;
+
         public string StatusText
         {
             get
             {
-                if (Shielded) return "ESCUDO";
+                if (HasWeight) return "PESA " + Mathf.CeilToInt(WeightRemaining);
+                if (Shielded) return "ESCUDO 1";
                 if (Time.time < speedBoostUntil) return "VELOCIDAD";
                 if (Time.time < slowUntil) return "LENTO";
-                if (Time.time < throwBoostUntil) return "TIRO+";
                 return string.Empty;
             }
         }
@@ -60,9 +63,12 @@ namespace BoxBash
         private float speedBoostUntil;
         private float throwMultiplier = 1f;
         private float throwBoostUntil;
+        private int shieldCharges;
         private float shieldUntil;
         private float slowMultiplier = 1f;
         private float slowUntil;
+        private float weightDeadline;
+        private float weightTransferLockUntil;
         private static readonly RaycastHit[] groundHits = new RaycastHit[8];
 
         private void Awake()
@@ -87,6 +93,15 @@ namespace BoxBash
             if (Time.time >= speedBoostUntil) speedMultiplier = 1f;
             if (Time.time >= throwBoostUntil) throwMultiplier = 1f;
             if (Time.time >= slowUntil) slowMultiplier = 1f;
+            if (Time.time >= shieldUntil) shieldCharges = 0;
+
+            if (IsAlive && weightDeadline > 0f && Time.time >= weightDeadline)
+            {
+                weightDeadline = 0f;
+                presentation?.SetWeight(false);
+                PrototypeBootstrap.Instance?.DropCrushingWeight(this);
+                Eliminate();
+            }
         }
 
         public void SetControlEnabled(bool enabled)
@@ -110,11 +125,18 @@ namespace BoxBash
             if (!IsAlive) return;
 
             float carryPenalty = CarriedCrate != null ? CarriedCrate.CarryMoveMultiplier : 1f;
-            float effectiveSpeed = moveSpeed * speedMultiplier * slowMultiplier * carryPenalty;
+            float activeSlow = Time.time < slowUntil ? slowMultiplier : 1f;
+            float effectiveSpeed = moveSpeed * speedMultiplier * activeSlow * carryPenalty;
             Vector3 desired = Time.time < stunnedUntil ? Vector3.zero : new Vector3(MoveInput.x, 0f, MoveInput.y) * effectiveSpeed;
             Vector3 planar = new Vector3(body.velocity.x, 0f, body.velocity.z);
             Vector3 next = Vector3.MoveTowards(planar, desired, acceleration * Time.fixedDeltaTime);
             body.velocity = new Vector3(next.x, body.velocity.y, next.z);
+
+            if (activeSlow < 0.999f && !GroundedCheck())
+            {
+                float gravityCompensation = -Physics.gravity.y * body.mass * (1f - activeSlow);
+                body.AddForce(Vector3.up * gravityCompensation, ForceMode.Force);
+            }
 
             if (Facing.sqrMagnitude > 0.1f)
             {
@@ -164,7 +186,8 @@ namespace BoxBash
             Vector3 v = body.velocity;
             v.y = Mathf.Max(0f, v.y);
             body.velocity = v;
-            body.AddForce(Vector3.up * jumpImpulse, ForceMode.Impulse);
+            float activeSlow = Time.time < slowUntil ? slowMultiplier : 1f;
+            body.AddForce(Vector3.up * jumpImpulse * activeSlow, ForceMode.Impulse);
             presentation?.Jump();
             PrototypeBootstrap.Feel?.Jump(transform.position);
             return true;
@@ -254,8 +277,17 @@ namespace BoxBash
         public void ApplyDamage(float amount, Vector3 impulse, ArenaFighter attacker = null)
         {
             if (!IsAlive || Time.time < invulnerableUntil) return;
+
+            if (Time.time < speedBoostUntil)
+            {
+                speedBoostUntil = 0f;
+                speedMultiplier = 1f;
+            }
+
             if (Shielded)
             {
+                shieldCharges = Mathf.Max(0, shieldCharges - 1);
+                shieldUntil = 0f;
                 invulnerableUntil = Time.time + 0.16f;
                 PrototypeBootstrap.Feel?.ShieldBlock(transform.position);
                 return;
@@ -296,8 +328,9 @@ namespace BoxBash
 
         public void ApplyShield(float duration)
         {
-            shieldUntil = Mathf.Max(shieldUntil, Time.time + duration);
-            presentation?.Shield();
+            shieldCharges = 1;
+            shieldUntil = Time.time + duration;
+            presentation?.Shield(duration);
         }
 
         public void ApplySlow(float multiplier, float duration)
@@ -306,10 +339,27 @@ namespace BoxBash
             slowUntil = Mathf.Max(slowUntil, Time.time + duration);
         }
 
-        public void ApplySlowToNearestOpponent(float multiplier, float duration)
+        public void GiveWeight(float duration)
         {
-            ArenaFighter target = ArenaWorld.NearestOpponent(this, false);
-            target?.ApplySlow(multiplier, duration);
+            ReceiveWeight(Time.time + duration);
+        }
+
+        private void ReceiveWeight(float deadline)
+        {
+            if (!IsAlive) return;
+            weightDeadline = deadline;
+            weightTransferLockUntil = Time.time + 0.42f;
+            presentation?.SetWeight(true);
+        }
+
+        private void PassWeightTo(ArenaFighter other)
+        {
+            if (!HasWeight || other == null || !other.IsAlive || other.HasWeight || Time.time < weightTransferLockUntil) return;
+            float deadline = weightDeadline;
+            weightDeadline = 0f;
+            presentation?.SetWeight(false);
+            other.ReceiveWeight(deadline);
+            PrototypeBootstrap.Feel?.WeightPass(other.transform.position);
         }
 
         public void Flatten()
@@ -325,6 +375,8 @@ namespace BoxBash
             if (!IsAlive) return;
             IsAlive = false;
             ControlsEnabled = false;
+            weightDeadline = 0f;
+            presentation?.SetWeight(false);
             ForceDrop();
             SetMoveInput(Vector2.zero, true);
             body.velocity = Vector3.zero;
@@ -337,7 +389,16 @@ namespace BoxBash
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (!IsAlive || CarriedCrate != null || MoveInput.magnitude < 0.78f || Time.time < nextKickAt) return;
+            if (!IsAlive) return;
+
+            ArenaFighter otherFighter = collision.collider.GetComponentInParent<ArenaFighter>();
+            if (otherFighter != null && otherFighter != this)
+            {
+                if (HasWeight) PassWeightTo(otherFighter);
+                else if (otherFighter.HasWeight) otherFighter.PassWeightTo(this);
+            }
+
+            if (CarriedCrate != null || MoveInput.magnitude < 0.78f || Time.time < nextKickAt) return;
             CarryableCrate crate = collision.collider.GetComponentInParent<CarryableCrate>();
             if (crate == null || !crate.CanBeKicked) return;
             nextKickAt = Time.time + 0.38f;
