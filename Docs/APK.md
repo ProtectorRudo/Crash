@@ -1,36 +1,36 @@
 # APK de gameplay para teléfono
 
-## Requisitos
-- Unity Hub
-- Unity 2022.3.7f1
-- Android Build Support + Android SDK/NDK + OpenJDK
+## Toolchain probado
+Crash queda alineado con el mismo editor ya usado para PogoDom/CIVIDOM:
+- Unity `6000.3.23f1`
+- revisión `09d2ecc7fb28`
+- Android Build Support + Android SDK/NDK + OpenJDK instalados desde Unity Hub
 
-## La build que hay que probar primero
-1. Abrir la carpeta raíz del proyecto con Unity Hub.
-2. Esperar la importación/compilación inicial.
-3. Abrir `Assets/Scenes/Main.unity` y probar con **Play**.
-4. Menú superior: **BOX BASH > Build Android APK (Phone Test)**.
-5. Instalar `Builds/BoxBash-Gameplay.apk` en el teléfono.
+## Primer APK: Development truth gate
+Para la primera prueba real seguimos el patrón probado de PogoDom: Development APK y build batch desde CMD.
 
-`Phone Test` NO usa Development Build. Es la build correcta para evaluar FPS, temperatura, respuesta táctil y sensación real del juego.
+Salida esperada:
+`Builds/BoxBash-Development.apk`
 
-## Build de diagnóstico
-Si necesitamos logs/debug de Unity:
+Comando batch:
+`Unity.exe -batchmode -nographics -force-d3d11 -quit -projectPath <repo> -executeMethod BoxBash.EditorTools.AndroidBuild.BuildDevelopmentApkBatch -logFile <log>`
 
-**BOX BASH > Build Android APK (Development)**
-
-Genera `Builds/BoxBash-Development.apk`. No usar su rendimiento como referencia final porque incorpora overhead de desarrollo.
-
-## Configuración automatizada
-El builder fija:
-- versión 0.7.0 / versionCode 7;
-- IL2CPP + ARM64;
+El builder configura automáticamente:
+- versión `0.7.1` / versionCode `8`;
 - Android min SDK 24;
-- APK (no AAB);
-- rotación sólo entre Landscape Left / Landscape Right;
-- escena `Assets/Scenes/Main.unity`.
+- APK, no AAB;
+- rotación sólo Landscape Left / Landscape Right;
+- escena `Assets/Scenes/Main.unity`;
+- identificador `com.protectorrudo.boxbash`.
 
-El runtime apunta a 60 FPS, física a 60 Hz, un solo touch activo y HUD dentro del `Screen.safeArea`.
+Para este primer gate no se fuerza scripting backend ni arquitectura desde código: se deja que el toolchain Android instalado por Unity Hub use su combinación compatible, igual que en PogoDom. Cuando el juego ya corra en un teléfono endurecemos backend/arquitecturas de release.
+
+## APK de rendimiento
+Después de validar que la Development APK instala y juega correctamente:
+
+**BOX BASH > Build Android APK (Phone Test)**
+
+Genera `Builds/BoxBash-Gameplay.apk` sin `Development Build`, apropiada para evaluar FPS, temperatura y frame pacing reales.
 
 ## Controles móviles
 - Arrastrar: mover.
@@ -39,7 +39,7 @@ El runtime apunta a 60 FPS, física a 60 Hz, un solo touch activo y HUD dentro d
 - Flick corto y rápido: patear caja o rival cercano.
 - Al terminar: un toque para revancha.
 
-La sensibilidad táctil se escala según la altura de pantalla para conservar una sensación parecida entre resoluciones distintas.
+La sensibilidad táctil se escala según la altura de pantalla. El runtime apunta a 60 FPS, física a 60 Hz y HUD dentro de `Screen.safeArea`.
 
 ## Editor
 - WASD / flechas: mover.
