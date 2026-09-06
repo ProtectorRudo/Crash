@@ -7,7 +7,7 @@ namespace BoxBash
     {
         [Range(0f, 1f)] public float aggression = 0.65f;
         [Range(0f, 1f)] public float skill = 0.62f;
-        public float decisionInterval = 0.14f;
+        public float decisionInterval = 0.13f;
 
         private ArenaFighter fighter;
         private float nextDecision;
@@ -15,6 +15,7 @@ namespace BoxBash
         private float wanderUntil;
         private CarryableCrate reservedCrate;
         private float personalBias;
+        private float nextJumpThought;
 
         private void Awake()
         {
@@ -36,9 +37,14 @@ namespace BoxBash
         private void Think()
         {
             float localThreat = ArenaWorld.ThreatAt(transform.position);
-            if (localThreat > Mathf.Lerp(0.8f, 0.36f, skill))
+            if (localThreat > Mathf.Lerp(0.82f, 0.34f, skill))
             {
                 FleeDanger();
+                if (Time.time >= nextJumpThought && Random.value < Mathf.Lerp(0.06f, 0.22f, skill))
+                {
+                    nextJumpThought = Time.time + 0.8f;
+                    fighter.Jump();
+                }
                 return;
             }
 
@@ -49,10 +55,28 @@ namespace BoxBash
                 return;
             }
 
+            ArenaPickup pickup = ArenaWorld.BestPickup(fighter, fighter.Health < 48f ? 8f : 5.2f);
+            if (pickup != null && (fighter.Health < 58f || Random.value < 0.18f + skill * 0.22f))
+            {
+                Vector3 pd = pickup.transform.position - transform.position;
+                Vector2 towardPickup = new Vector2(pd.x, pd.z).normalized;
+                fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, towardPickup) * 0.9f);
+                return;
+            }
+
+            CarryableCrate kickable = ArenaWorld.NearestKickableCrate(fighter, 1.18f);
+            if (kickable != null && !kickable.CanBePickedUp && Random.value < 0.62f)
+            {
+                Vector3 d = kickable.transform.position - transform.position;
+                fighter.SetMoveInput(new Vector2(d.x, d.z).normalized * 0.35f);
+                fighter.Kick();
+                return;
+            }
+
             if (reservedCrate == null || !reservedCrate.CanBeTargetedBy(fighter))
             {
                 ReleaseCrate();
-                CarryableCrate candidate = ArenaWorld.BestFreeCrate(fighter, Mathf.Lerp(0.05f, 0.75f, skill));
+                CarryableCrate candidate = ArenaWorld.BestFreeCrate(fighter, Mathf.Lerp(0.08f, 0.82f, skill));
                 if (candidate != null && candidate.TryReserve(fighter)) reservedCrate = candidate;
             }
 
@@ -60,7 +84,7 @@ namespace BoxBash
             {
                 Vector3 delta3 = reservedCrate.transform.position - transform.position;
                 delta3.y = 0f;
-                if (delta3.magnitude <= fighter.pickupRadius * 0.88f)
+                if (delta3.magnitude <= fighter.pickupRadius * 0.90f)
                 {
                     fighter.ContextAction();
                     if (fighter.CarriedCrate != null) reservedCrate = null;
@@ -76,7 +100,7 @@ namespace BoxBash
             if (opponent != null && Random.value < aggression)
             {
                 Vector3 d = opponent.transform.position - transform.position;
-                Vector2 desired = new Vector2(d.x, d.z).normalized * 0.72f;
+                Vector2 desired = new Vector2(d.x, d.z).normalized * 0.70f;
                 fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, desired));
                 return;
             }
@@ -97,16 +121,17 @@ namespace BoxBash
             d.y = 0f;
             float distance = d.magnitude;
             Vector2 toward = new Vector2(d.x, d.z).normalized;
-            float idealRange = Mathf.Lerp(2.6f, 4.4f, skill);
+            float idealRange = Mathf.Lerp(2.7f, 4.7f, skill);
+            if (fighter.CarriedCrate != null && fighter.CarriedCrate.kind == CrateKind.Heavy) idealRange *= 0.82f;
 
-            if (distance > idealRange + 0.7f)
+            if (distance > idealRange + 0.65f)
             {
-                fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, toward) * 0.86f);
+                fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, toward) * 0.88f);
                 return;
             }
 
-            fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, toward) * 0.16f);
-            float chance = Mathf.Lerp(0.46f, 0.96f, skill);
+            fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, toward) * 0.12f);
+            float chance = Mathf.Lerp(0.43f, 0.94f, skill);
             if (distance <= idealRange + 1.0f && Random.value < chance)
             {
                 fighter.SetMoveInput(toward);
@@ -118,8 +143,7 @@ namespace BoxBash
         {
             ArenaFighter nearest = ArenaWorld.NearestOpponent(fighter, true);
             if (nearest == null) return null;
-
-            if (personalBias > 0.72f && Random.value < 0.28f)
+            if (personalBias > 0.72f && Random.value < 0.30f)
             {
                 ArenaFighter alternative = null;
                 float best = float.MaxValue;
@@ -140,19 +164,15 @@ namespace BoxBash
         {
             Vector2 best = Vector2.zero;
             float bestThreat = float.MaxValue;
-            const int samples = 8;
+            const int samples = 12;
             for (int i = 0; i < samples; i++)
             {
                 float angle = i * Mathf.PI * 2f / samples;
                 Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                Vector3 probe = transform.position + new Vector3(dir.x, 0f, dir.y) * 1.25f;
+                Vector3 probe = transform.position + new Vector3(dir.x, 0f, dir.y) * 1.2f;
                 float threat = ArenaWorld.HasSafeFloor(probe) ? ArenaWorld.ThreatAt(probe) : 100f;
-                threat += Random.value * (1f - skill) * 0.15f;
-                if (threat < bestThreat)
-                {
-                    bestThreat = threat;
-                    best = dir;
-                }
+                threat += Random.value * (1f - skill) * 0.12f;
+                if (threat < bestThreat) { bestThreat = threat; best = dir; }
             }
             fighter.SetMoveInput(best);
         }
@@ -162,9 +182,9 @@ namespace BoxBash
             if (Time.time >= wanderUntil)
             {
                 wander = Random.insideUnitCircle.normalized;
-                wanderUntil = Time.time + Random.Range(0.65f, 1.45f);
+                wanderUntil = Time.time + Random.Range(0.58f, 1.20f);
             }
-            fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, wander) * 0.58f);
+            fighter.SetMoveInput(ArenaWorld.MakeDirectionSafe(transform.position, wander) * 0.60f);
         }
 
         private void ReleaseCrate()

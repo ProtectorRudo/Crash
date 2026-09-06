@@ -22,14 +22,14 @@ namespace BoxBash.EditorTools
 
             PlayerSettings.companyName = "BoxBash";
             PlayerSettings.productName = "Box Bash";
-            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.boxbash.gameplay");
-            PlayerSettings.bundleVersion = "0.2.1";
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.boxbash.spacecrate");
+            PlayerSettings.bundleVersion = "0.4.0";
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
-            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
             EditorUserBuildSettings.buildAppBundle = false;
 
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)

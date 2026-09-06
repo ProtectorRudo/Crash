@@ -2,12 +2,11 @@ using UnityEngine;
 
 namespace BoxBash
 {
-    /// <summary>Keeps the arena supplied so a broken crate never turns the match into dead time.</summary>
     public sealed class CrateDirector : MonoBehaviour
     {
-        public int targetCrates = 11;
-        public float checkInterval = 0.55f;
-        public float minimumFighterDistance = 1.45f;
+        public int targetCrates = 14;
+        public float checkInterval = 0.58f;
+        public float minimumFighterDistance = 1.4f;
 
         private PrototypeBootstrap bootstrap;
         private float nextCheck;
@@ -28,7 +27,6 @@ namespace BoxBash
             ArenaWorld.PruneDestroyed();
             int missing = targetCrates - ArenaWorld.Crates.Count;
             if (missing <= 0) return;
-
             int spawnNow = Mathf.Min(2, missing);
             for (int i = 0; i < spawnNow; i++) TrySpawnOne();
         }
@@ -37,8 +35,7 @@ namespace BoxBash
         {
             var tiles = ArenaWorld.Tiles;
             if (tiles.Count == 0) return;
-
-            for (int attempt = 0; attempt < 24; attempt++)
+            for (int attempt = 0; attempt < 28; attempt++)
             {
                 BreakableTile tile = tiles[Random.Range(0, tiles.Count)];
                 if (tile == null || tile.IsBroken) continue;
@@ -46,7 +43,10 @@ namespace BoxBash
                 if (TooCloseToFighter(point) || TooCloseToCrate(point)) continue;
 
                 float roll = Random.value;
-                CrateKind kind = roll < 0.12f ? CrateKind.Nitro : (roll < 0.34f ? CrateKind.TNT : CrateKind.Normal);
+                CrateKind kind = roll < 0.08f ? CrateKind.Nitro :
+                                 roll < 0.25f ? CrateKind.TNT :
+                                 roll < 0.36f ? CrateKind.Gift :
+                                 roll < 0.47f ? CrateKind.Heavy : CrateKind.Normal;
                 bootstrap.SpawnCrate(point, kind, true);
                 return;
             }
@@ -67,7 +67,7 @@ namespace BoxBash
 
         private bool TooCloseToCrate(Vector3 point)
         {
-            const float sqrLimit = 1.25f * 1.25f;
+            const float sqrLimit = 1.12f * 1.12f;
             var crates = ArenaWorld.Crates;
             for (int i = 0; i < crates.Count; i++)
             {
