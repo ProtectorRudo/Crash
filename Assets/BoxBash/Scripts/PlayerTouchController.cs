@@ -15,6 +15,7 @@ namespace BoxBash
         private ArenaFighter fighter;
         private Vector2 pointerStart;
         private bool pointerDown;
+        private bool contextActionThisPointer;
         private float pointerBeganAt;
         private bool tapPending;
         private float pendingTapAt;
@@ -73,6 +74,7 @@ namespace BoxBash
             if (began)
             {
                 pointerDown = true;
+                contextActionThisPointer = false;
                 pointerStart = position;
                 pointerBeganAt = Time.unscaledTime;
 
@@ -80,6 +82,7 @@ namespace BoxBash
                 if (now - lastTapTime <= doubleTapWindow)
                 {
                     tapPending = false;
+                    contextActionThisPointer = true;
                     fighter.ContextAction();
                     lastTapTime = -10f;
                 }
@@ -112,8 +115,10 @@ namespace BoxBash
                 pointerDown = false;
                 fighter.SetMoveInput(Vector2.zero);
 
-                bool deliberateFlick = heldFor >= 0.045f && heldFor < 0.22f &&
+                bool deliberateFlick = !contextActionThisPointer && heldFor >= 0.045f && heldFor < 0.22f &&
                                       distance >= flickMinPixels * scale && distance <= flickMaxPixels * scale;
+                contextActionThisPointer = false;
+
                 if (deliberateFlick)
                 {
                     tapPending = false;
