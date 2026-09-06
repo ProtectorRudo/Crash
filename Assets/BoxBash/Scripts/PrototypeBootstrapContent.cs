@@ -41,12 +41,15 @@ namespace BoxBash
             switch (kind)
             {
                 case CrateKind.TNT: color = new Color(0.90f, 0.11f, 0.08f); break;
-                case CrateKind.Nitro: color = new Color(0.18f, 0.87f, 0.23f); break;
+                case CrateKind.Nitro: color = new Color(0.16f, 0.82f, 0.20f); break;
                 case CrateKind.Heavy: color = new Color(0.42f, 0.46f, 0.52f); break;
                 case CrateKind.Gift: color = new Color(0.63f, 0.20f, 0.82f); break;
-                default: color = new Color(0.47f, 0.50f, 0.56f); break;
+                default: color = new Color(0.46f, 0.47f, 0.49f); break;
             }
-            crate.GetComponent<Renderer>().material = Mat(color, kind == CrateKind.Normal ? 0.48f : 0.08f, 0.34f);
+
+            float metallic = kind == CrateKind.Normal ? 0.05f : 0.08f;
+            float smoothness = kind == CrateKind.Normal ? 0.16f : 0.32f;
+            crate.GetComponent<Renderer>().sharedMaterial = Mat(color, metallic, smoothness);
             Rigidbody rb = crate.AddComponent<Rigidbody>();
             CarryableCrate c = crate.AddComponent<CarryableCrate>();
             c.ConfigureKind(kind);
@@ -62,17 +65,22 @@ namespace BoxBash
 
         private void CreateCrateAccent(Transform parent, CrateKind kind)
         {
-            GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            stripe.name = "Crate Band";
-            stripe.transform.SetParent(parent, false);
-            stripe.transform.localPosition = new Vector3(0f, 0.44f, 0f);
-            stripe.transform.localScale = new Vector3(0.84f, 0.065f, 0.84f);
-            Color accent = kind == CrateKind.Normal ? new Color(0.18f, 0.20f, 0.24f) :
-                           kind == CrateKind.TNT ? new Color(1f, 0.85f, 0.10f) :
-                           kind == CrateKind.Nitro ? new Color(0.92f, 1f, 0.92f) :
+            Color accent = kind == CrateKind.Normal ? new Color(0.17f, 0.18f, 0.20f) :
+                           kind == CrateKind.TNT ? new Color(1f, 0.82f, 0.06f) :
+                           kind == CrateKind.Nitro ? new Color(0.93f, 1f, 0.93f) :
                            kind == CrateKind.Heavy ? new Color(0.18f, 0.20f, 0.23f) : new Color(1f, 0.72f, 0.16f);
-            stripe.GetComponent<Renderer>().material = Mat(accent, 0.05f, 0.42f);
-            Destroy(stripe.GetComponent<Collider>());
+            Material accentMat = Mat(accent, 0.05f, 0.34f);
+
+            for (int axis = 0; axis < 2; axis++)
+            {
+                GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                band.name = "Crate Reinforcement";
+                band.transform.SetParent(parent, false);
+                band.transform.localPosition = new Vector3(0f, 0.44f - axis * 0.88f, 0f);
+                band.transform.localScale = new Vector3(0.84f, 0.06f, 0.84f);
+                band.GetComponent<Renderer>().sharedMaterial = accentMat;
+                Destroy(band.GetComponent<Collider>());
+            }
 
             string label = kind == CrateKind.TNT ? "TNT" : kind == CrateKind.Nitro ? "N" : "";
             if (!string.IsNullOrEmpty(label)) CreateCrateLabel(parent, label);
@@ -91,6 +99,7 @@ namespace BoxBash
             mesh.fontSize = 64;
             mesh.characterSize = 0.09f;
             mesh.color = Color.white;
+            mesh.fontStyle = FontStyle.Bold;
         }
 
         public void SpawnRandomPickup(Vector3 position)
@@ -105,27 +114,67 @@ namespace BoxBash
 
         public ArenaPickup SpawnPowerup(Vector3 position, PowerupKind kind)
         {
-            GameObject go = GameObject.CreatePrimitive(kind == PowerupKind.Weight ? PrimitiveType.Cube : PrimitiveType.Sphere);
+            PrimitiveType shape = kind == PowerupKind.Weight ? PrimitiveType.Cube :
+                                  kind == PowerupKind.Shield ? PrimitiveType.Cylinder : PrimitiveType.Sphere;
+            GameObject go = GameObject.CreatePrimitive(shape);
             go.name = kind + " Powerup";
             go.transform.SetParent(world);
             go.transform.position = position;
-            go.transform.localScale = kind == PowerupKind.Weight ? Vector3.one * 0.46f : Vector3.one * 0.52f;
-            Color color = kind == PowerupKind.Wumpa ? new Color(1f, 0.36f, 0.18f) :
-                          kind == PowerupKind.SpeedBoots ? new Color(0.20f, 0.78f, 1f) :
-                          kind == PowerupKind.Shield ? new Color(0.25f, 1f, 0.75f) :
-                          kind == PowerupKind.SlowZap ? new Color(0.62f, 0.45f, 1f) :
-                          kind == PowerupKind.Weight ? new Color(0.72f, 0.74f, 0.80f) :
+            go.transform.localScale = kind == PowerupKind.Weight ? new Vector3(0.54f, 0.38f, 0.54f) :
+                                      kind == PowerupKind.Shield ? new Vector3(0.48f, 0.13f, 0.48f) : Vector3.one * 0.52f;
+            Color color = kind == PowerupKind.Wumpa ? new Color(1f, 0.32f, 0.14f) :
+                          kind == PowerupKind.SpeedBoots ? new Color(0.18f, 0.76f, 1f) :
+                          kind == PowerupKind.Shield ? new Color(0.18f, 1f, 0.72f) :
+                          kind == PowerupKind.SlowZap ? new Color(0.62f, 0.38f, 1f) :
+                          kind == PowerupKind.Weight ? new Color(0.62f, 0.64f, 0.68f) :
                           new Color(1f, 0.78f, 0.14f);
-            go.GetComponent<Renderer>().material = GlowMat(color);
+            go.GetComponent<Renderer>().sharedMaterial = GlowMat(color);
+
             Collider old = go.GetComponent<Collider>();
             if (!(old is SphereCollider))
             {
                 Destroy(old);
                 go.AddComponent<SphereCollider>();
             }
+
+            string icon = kind == PowerupKind.Wumpa ? "+" :
+                          kind == PowerupKind.SpeedBoots ? ">>" :
+                          kind == PowerupKind.Shield ? "1" :
+                          kind == PowerupKind.SlowZap ? "Z" :
+                          kind == PowerupKind.Weight ? "500" : "";
+            CreatePowerupIcon(go.transform, icon);
+
+            if (kind == PowerupKind.Wumpa)
+            {
+                GameObject leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                leaf.name = "Health Leaf";
+                leaf.transform.SetParent(go.transform, false);
+                leaf.transform.localPosition = new Vector3(0.25f, 0.52f, 0f);
+                leaf.transform.localScale = new Vector3(0.22f, 0.10f, 0.34f);
+                leaf.GetComponent<Renderer>().sharedMaterial = GlowMat(new Color(0.22f, 0.90f, 0.25f));
+                Destroy(leaf.GetComponent<Collider>());
+            }
+
             ArenaPickup pickup = go.AddComponent<ArenaPickup>();
             pickup.kind = kind;
             return pickup;
+        }
+
+        private void CreatePowerupIcon(Transform parent, string icon)
+        {
+            if (string.IsNullOrEmpty(icon)) return;
+            GameObject text = new GameObject("Powerup Icon");
+            text.transform.SetParent(parent, false);
+            text.transform.localPosition = new Vector3(0f, 0f, -0.58f);
+            text.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            TextMesh mesh = text.AddComponent<TextMesh>();
+            mesh.text = icon;
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.alignment = TextAlignment.Center;
+            mesh.fontSize = 64;
+            mesh.characterSize = icon.Length > 1 ? 0.075f : 0.10f;
+            mesh.fontStyle = FontStyle.Bold;
+            mesh.color = Color.white;
         }
 
         public void DropCrushingWeight(ArenaFighter target)
@@ -136,7 +185,8 @@ namespace BoxBash
             weight.transform.SetParent(world);
             weight.transform.position = target.transform.position + Vector3.up * 2.2f;
             weight.transform.localScale = new Vector3(0.88f, 0.55f, 0.88f);
-            weight.GetComponent<Renderer>().material = Mat(new Color(0.26f, 0.29f, 0.34f), 0.70f, 0.34f);
+            weight.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.26f, 0.29f, 0.34f), 0.70f, 0.34f);
+            CreatePowerupIcon(weight.transform, "500");
             Rigidbody rb = weight.AddComponent<Rigidbody>();
             rb.mass = 4.5f;
             rb.velocity = Vector3.down * 8f;
