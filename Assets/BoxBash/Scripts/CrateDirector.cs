@@ -5,6 +5,7 @@ namespace BoxBash
     public sealed class CrateDirector : MonoBehaviour
     {
         public int targetCrates = 14;
+        public int targetPickups = 2;
         public float checkInterval = 0.58f;
         public float minimumFighterDistance = 1.4f;
 
@@ -25,13 +26,19 @@ namespace BoxBash
             if (!active || bootstrap == null || Time.time < nextCheck) return;
             nextCheck = Time.time + checkInterval;
             ArenaWorld.PruneDestroyed();
-            int missing = targetCrates - ArenaWorld.Crates.Count;
-            if (missing <= 0) return;
-            int spawnNow = Mathf.Min(2, missing);
-            for (int i = 0; i < spawnNow; i++) TrySpawnOne();
+
+            int missingCrates = targetCrates - ArenaWorld.Crates.Count;
+            if (missingCrates > 0)
+            {
+                int spawnNow = Mathf.Min(2, missingCrates);
+                for (int i = 0; i < spawnNow; i++) TrySpawnCrate();
+            }
+
+            int missingPickups = targetPickups - ArenaWorld.Pickups.Count;
+            if (missingPickups > 0) TrySpawnPickup();
         }
 
-        private void TrySpawnOne()
+        private void TrySpawnCrate()
         {
             var tiles = ArenaWorld.Tiles;
             if (tiles.Count == 0) return;
@@ -40,14 +47,27 @@ namespace BoxBash
                 BreakableTile tile = tiles[Random.Range(0, tiles.Count)];
                 if (tile == null || tile.IsBroken) continue;
                 Vector3 point = tile.transform.position + Vector3.up * 0.62f;
-                if (TooCloseToFighter(point) || TooCloseToCrate(point)) continue;
+                if (TooCloseToFighter(point) || TooCloseToCrate(point) || TooCloseToPickup(point)) continue;
 
                 float roll = Random.value;
-                CrateKind kind = roll < 0.08f ? CrateKind.Nitro :
-                                 roll < 0.25f ? CrateKind.TNT :
-                                 roll < 0.36f ? CrateKind.Gift :
-                                 roll < 0.47f ? CrateKind.Heavy : CrateKind.Normal;
+                CrateKind kind = roll < 0.10f ? CrateKind.Nitro :
+                                 roll < 0.34f ? CrateKind.TNT : CrateKind.Normal;
                 bootstrap.SpawnCrate(point, kind, true);
+                return;
+            }
+        }
+
+        private void TrySpawnPickup()
+        {
+            var tiles = ArenaWorld.Tiles;
+            if (tiles.Count == 0) return;
+            for (int attempt = 0; attempt < 28; attempt++)
+            {
+                BreakableTile tile = tiles[Random.Range(0, tiles.Count)];
+                if (tile == null || tile.IsBroken) continue;
+                Vector3 point = tile.transform.position + Vector3.up * 0.58f;
+                if (TooCloseToFighter(point) || TooCloseToCrate(point) || TooCloseToPickup(point)) continue;
+                bootstrap.SpawnRandomPickup(point);
                 return;
             }
         }
@@ -73,6 +93,18 @@ namespace BoxBash
             {
                 CarryableCrate crate = crates[i];
                 if (crate != null && (crate.transform.position - point).sqrMagnitude < sqrLimit) return true;
+            }
+            return false;
+        }
+
+        private bool TooCloseToPickup(Vector3 point)
+        {
+            const float sqrLimit = 1.2f * 1.2f;
+            var pickups = ArenaWorld.Pickups;
+            for (int i = 0; i < pickups.Count; i++)
+            {
+                ArenaPickup pickup = pickups[i];
+                if (pickup != null && pickup.IsAvailable && (pickup.transform.position - point).sqrMagnitude < sqrLimit) return true;
             }
             return false;
         }
