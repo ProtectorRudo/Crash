@@ -120,9 +120,13 @@ namespace BoxBash
 
         private void OnGUI()
         {
-            float s = Mathf.Clamp(Screen.width / 1080f, 0.66f, 1.35f);
-            DrawFighterHud(s);
-            DrawTimer(s);
+            float s = Mathf.Clamp(Screen.height / 1080f, 0.65f, 1.25f);
+            Rect safe = Screen.safeArea;
+            float safeTop = Screen.height - safe.yMax;
+            float safeBottom = safe.yMin;
+
+            DrawFighterHud(s, safe, safeTop);
+            DrawTimer(s, safe, safeTop);
 
             if (state == MatchState.Countdown)
             {
@@ -135,7 +139,7 @@ namespace BoxBash
             {
                 GUI.skin.label.fontSize = Mathf.RoundToInt(20 * s);
                 GUI.skin.label.alignment = TextAnchor.MiddleCenter;
-                GUI.Label(new Rect(Screen.width * 0.12f, Screen.height - 58f * s, Screen.width * 0.76f, 38f * s),
+                GUI.Label(new Rect(safe.xMin + safe.width * 0.10f, Screen.height - safeBottom - 54f * s, safe.width * 0.80f, 36f * s),
                     "Arrastrá: mover   •   toque: saltar   •   doble toque: agarrar/lanzar   •   flick: patear");
             }
 
@@ -149,11 +153,12 @@ namespace BoxBash
             }
         }
 
-        private void DrawTimer(float s)
+        private void DrawTimer(float s, Rect safe, float safeTop)
         {
             float w = 104f * s;
             float h = 58f * s;
-            Rect rect = new Rect((Screen.width - w) * 0.5f, 10f * s, w, h);
+            float center = safe.xMin + safe.width * 0.5f;
+            Rect rect = new Rect(center - w * 0.5f, safeTop + 8f * s, w, h);
             GUI.color = new Color(0.055f, 0.040f, 0.075f, 0.96f);
             GUI.Box(rect, GUIContent.none);
             GUI.color = new Color(1f, 0.52f, 0.08f, 1f);
@@ -166,25 +171,26 @@ namespace BoxBash
             GUI.color = Color.white;
         }
 
-        private void DrawFighterHud(float s)
+        private void DrawFighterHud(float s, Rect safe, float safeTop)
         {
             float gap = 7f * s;
             float centerGap = 122f * s;
-            float outer = 10f * s;
-            float available = Screen.width - outer * 2f - centerGap - gap * 2f;
-            float w = Mathf.Min(218f * s, available * 0.25f);
+            float outer = 8f * s;
+            float available = safe.width - outer * 2f - centerGap - gap * 2f;
+            float w = Mathf.Min(218f * s, Mathf.Max(120f * s, available * 0.25f));
             float h = 60f * s;
-            float left1 = outer;
+            float left1 = safe.xMin + outer;
             float left2 = left1 + w + gap;
-            float right2 = Screen.width - outer - w;
+            float right2 = safe.xMax - outer - w;
             float right1 = right2 - gap - w;
             float[] xs = { left1, left2, right1, right2 };
+            float y = safeTop + 8f * s;
 
             for (int i = 0; i < fighters.Count && i < 4; i++)
             {
                 ArenaFighter f = fighters[i];
                 if (f == null) continue;
-                DrawOneHud(f, new Rect(xs[i], 10f * s, w, h), s);
+                DrawOneHud(f, new Rect(xs[i], y, w, h), s);
             }
         }
 

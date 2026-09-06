@@ -9,6 +9,8 @@ namespace BoxBash
         public float doubleTapWindow = 0.24f;
         public float maxDragPixels = 105f;
         public float tapMoveCancelPixels = 26f;
+        public float flickMinPixels = 64f;
+        public float flickMaxPixels = 170f;
 
         private ArenaFighter fighter;
         private Vector2 pointerStart;
@@ -17,6 +19,8 @@ namespace BoxBash
         private bool tapPending;
         private float pendingTapAt;
         private float lastTapTime = -10f;
+
+        private float PixelScale => Mathf.Clamp(Screen.height / 1080f, 0.68f, 1.45f);
 
         private void Awake() => fighter = GetComponent<ArenaFighter>();
 
@@ -61,6 +65,11 @@ namespace BoxBash
 
         private void HandlePointer(Vector2 position, bool began, bool ended, bool held)
         {
+            float scale = PixelScale;
+            float dragDeadZone = dragDeadZonePixels * scale;
+            float maxDrag = maxDragPixels * scale;
+            float tapCancel = tapMoveCancelPixels * scale;
+
             if (began)
             {
                 pointerDown = true;
@@ -85,21 +94,30 @@ namespace BoxBash
             if (pointerDown && held)
             {
                 Vector2 delta = position - pointerStart;
-                if (delta.magnitude > tapMoveCancelPixels) { tapPending = false; lastTapTime = -10f; }
-                if (delta.magnitude < dragDeadZonePixels) fighter.SetMoveInput(Vector2.zero);
-                else fighter.SetMoveInput(Vector2.ClampMagnitude(delta / maxDragPixels, 1f));
+                if (delta.magnitude > tapCancel)
+                {
+                    tapPending = false;
+                    lastTapTime = -10f;
+                }
+
+                if (delta.magnitude < dragDeadZone) fighter.SetMoveInput(Vector2.zero);
+                else fighter.SetMoveInput(Vector2.ClampMagnitude(delta / Mathf.Max(1f, maxDrag), 1f));
             }
 
-            if (ended)
+            if (ended && pointerDown)
             {
                 Vector2 delta = position - pointerStart;
+                float distance = delta.magnitude;
                 float heldFor = Time.unscaledTime - pointerBeganAt;
                 pointerDown = false;
                 fighter.SetMoveInput(Vector2.zero);
 
-                if (delta.magnitude > 64f && heldFor < 0.22f)
+                bool deliberateFlick = heldFor >= 0.045f && heldFor < 0.22f &&
+                                      distance >= flickMinPixels * scale && distance <= flickMaxPixels * scale;
+                if (deliberateFlick)
                 {
                     tapPending = false;
+                    lastTapTime = -10f;
                     fighter.Kick();
                 }
             }

@@ -24,10 +24,16 @@ namespace BoxBash
         {
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
+            Time.fixedDeltaTime = 1f / 60f;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
             Input.multiTouchEnabled = false;
 #if UNITY_ANDROID || UNITY_IOS
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.fullScreen = true;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
 #endif
             BuildWorld();
         }
