@@ -86,36 +86,37 @@ namespace BoxBash
             go.transform.SetParent(session);
             Camera cam = go.AddComponent<Camera>();
             go.AddComponent<AudioListener>();
-            cam.transform.position = new Vector3(0f, 13.4f, -11.2f);
-            cam.transform.rotation = Quaternion.Euler(50.5f, 0f, 0f);
-            cam.fieldOfView = 42f;
+            cam.transform.position = new Vector3(0f, 13.8f, -12.2f);
+            cam.transform.rotation = Quaternion.Euler(51.8f, 0f, 0f);
+            cam.fieldOfView = 40f;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.012f, 0.018f, 0.048f);
+            cam.backgroundColor = new Color(0.12f, 0.035f, 0.20f);
             cam.allowHDR = true;
             cam.nearClipPlane = 0.2f;
-            cam.farClipPlane = 80f;
+            cam.farClipPlane = 90f;
             return cam;
         }
 
         private void CreateLighting()
         {
-            RenderSettings.ambientLight = new Color(0.34f, 0.39f, 0.53f);
-            GameObject sun = new GameObject("Cold Key Light");
+            RenderSettings.ambientLight = new Color(0.36f, 0.31f, 0.48f);
+            GameObject sun = new GameObject("Cool Rooftop Key");
             sun.transform.SetParent(session);
             Light l = sun.AddComponent<Light>();
             l.type = LightType.Directional;
-            l.intensity = 1.22f;
+            l.color = new Color(0.76f, 0.84f, 1f);
+            l.intensity = 1.18f;
             l.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(50f, -34f, 0f);
 
-            GameObject rim = new GameObject("Warm Arena Rim");
+            GameObject rim = new GameObject("Neon Arena Rim");
             rim.transform.SetParent(session);
             Light r = rim.AddComponent<Light>();
             r.type = LightType.Point;
-            r.color = new Color(1f, 0.42f, 0.16f);
-            r.range = 17f;
-            r.intensity = 1.25f;
-            rim.transform.position = new Vector3(0f, 4.2f, 2f);
+            r.color = new Color(1f, 0.26f, 0.58f);
+            r.range = 18f;
+            r.intensity = 1.18f;
+            rim.transform.position = new Vector3(0f, 5.2f, 5f);
         }
 
         private Material Mat(Color color, float metallic = 0f, float smooth = 0.35f)
@@ -145,29 +146,65 @@ namespace BoxBash
 
         private void CreateSpaceBackdrop()
         {
-            Material stars = GlowMat(new Color(0.74f, 0.88f, 1f));
+            Material sky = Mat(new Color(0.14f, 0.035f, 0.22f), 0f, 0.08f);
+            GameObject skyWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            skyWall.name = "Purple Skyline Backdrop";
+            skyWall.transform.SetParent(session);
+            skyWall.transform.position = new Vector3(0f, 8f, 35f);
+            skyWall.transform.localScale = new Vector3(52f, 26f, 0.4f);
+            skyWall.GetComponent<Renderer>().material = sky;
+            Destroy(skyWall.GetComponent<Collider>());
+
+            Material buildingA = Mat(new Color(0.045f, 0.050f, 0.085f), 0.18f, 0.22f);
+            Material buildingB = Mat(new Color(0.070f, 0.050f, 0.105f), 0.12f, 0.18f);
+            Material windowCyan = GlowMat(new Color(0.18f, 0.82f, 1f));
+            Material windowPink = GlowMat(new Color(1f, 0.23f, 0.66f));
+            Material windowWarm = GlowMat(new Color(1f, 0.68f, 0.18f));
+
             Random.State state = Random.state;
-            Random.InitState(9421);
-            for (int i = 0; i < 46; i++)
+            Random.InitState(20412);
+            for (int i = 0; i < 24; i++)
             {
-                GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                star.name = "Star";
-                star.transform.SetParent(session);
-                star.transform.position = new Vector3(Random.Range(-18f, 18f), Random.Range(3f, 15f), Random.Range(7f, 31f));
-                float scale = Random.Range(0.025f, 0.075f);
-                star.transform.localScale = Vector3.one * scale;
-                star.GetComponent<Renderer>().material = stars;
-                Destroy(star.GetComponent<Collider>());
+                float width = Random.Range(1.2f, 3.2f);
+                float depth = Random.Range(1.3f, 3.8f);
+                float height = Random.Range(4.0f, 13.0f);
+                float x = Mathf.Lerp(-20f, 20f, i / 23f) + Random.Range(-0.85f, 0.85f);
+                float z = Random.Range(17f, 29f);
+
+                GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                building.name = "Future Tower";
+                building.transform.SetParent(session);
+                building.transform.position = new Vector3(x, height * 0.5f - 3.6f, z);
+                building.transform.localScale = new Vector3(width, height, depth);
+                building.GetComponent<Renderer>().material = (i % 2 == 0) ? buildingA : buildingB;
+                Destroy(building.GetComponent<Collider>());
+
+                Material windowMat = i % 3 == 0 ? windowPink : (i % 3 == 1 ? windowCyan : windowWarm);
+                int rows = Mathf.Clamp(Mathf.RoundToInt(height / 2.2f), 2, 5);
+                for (int row = 0; row < rows; row++)
+                {
+                    GameObject windows = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    windows.name = "Neon Windows";
+                    windows.transform.SetParent(building.transform, false);
+                    float localY = -0.38f + (row + 0.75f) / rows * 0.76f;
+                    windows.transform.localPosition = new Vector3(0f, localY, -0.505f);
+                    windows.transform.localScale = new Vector3(0.72f, 0.045f, 0.025f);
+                    windows.GetComponent<Renderer>().material = windowMat;
+                    Destroy(windows.GetComponent<Collider>());
+                }
+
+                if (i % 5 == 0)
+                {
+                    GameObject mast = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    mast.name = "Tower Mast";
+                    mast.transform.SetParent(building.transform, false);
+                    mast.transform.localPosition = new Vector3(0f, 0.62f, 0f);
+                    mast.transform.localScale = new Vector3(0.035f, 0.28f, 0.035f);
+                    mast.GetComponent<Renderer>().material = windowPink;
+                    Destroy(mast.GetComponent<Collider>());
+                }
             }
             Random.state = state;
-
-            GameObject planet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            planet.name = "Distant Planet";
-            planet.transform.SetParent(session);
-            planet.transform.position = new Vector3(9.2f, 7.8f, 23f);
-            planet.transform.localScale = Vector3.one * 4.5f;
-            planet.GetComponent<Renderer>().material = Mat(new Color(0.22f, 0.30f, 0.52f), 0f, 0.34f);
-            Destroy(planet.GetComponent<Collider>());
         }
     }
 }
