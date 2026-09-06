@@ -40,12 +40,8 @@ tuning = files.get("SpaceBashTuning.cs")
 if tuning:
     t = tuning.read_text(encoding="utf-8-sig")
     required_tuning = (
-        "MatchSeconds = 90f",
-        "TntFuse = 3.0f",
-        "SpeedBootsDuration = 8.0f",
-        "SlowZDuration = 8.0f",
-        "ShieldDuration = 10.0f",
-        "WeightDuration = 8.0f",
+        "MatchSeconds = 90f", "TntFuse = 3.0f", "SpeedBootsDuration = 8.0f",
+        "SlowZDuration = 8.0f", "ShieldDuration = 10.0f", "WeightDuration = 8.0f",
     )
     for needle in required_tuning:
         if needle not in t:
@@ -76,6 +72,8 @@ if bootstrap:
         errors.append("visual regression: outer-space backdrop returned")
     if "cam.fieldOfView = 40f" not in t or "Quaternion.Euler(51.8f" not in t:
         errors.append("visual regression: rooftop camera framing changed")
+    if t.count(".sharedMaterial") < 4:
+        errors.append("mobile regression: skyline stopped sharing repeated materials")
 
 arena = files.get("PrototypeBootstrapArena.cs")
 if arena:
@@ -84,7 +82,13 @@ if arena:
         if needle not in t:
             errors.append(f"visual regression: metallic arena detail missing {needle}")
     if "shadow.transform.SetParent(parent.parent, false)" not in t:
-        errors.append("visual regression: fighter shadow no longer stays on fighter root")
+        errors.append("visual regression: fighter shadow hierarchy changed unexpectedly")
+
+presentation = files.get("FighterPresentation.cs")
+if presentation:
+    t = presentation.read_text(encoding="utf-8-sig")
+    if "UpdateGroundShadow()" not in t or "ArenaWorld.HasSafeFloor(transform.position, 0.82f)" not in t:
+        errors.append("visual regression: fighter shadow no longer stays pinned to safe floor")
 
 match = files.get("MatchManager.cs")
 if match:
@@ -112,6 +116,11 @@ if content:
         errors.append("fidelity regression: throw boost returned to the Space Bash spawn pool")
     if "PowerupKind.SlowZap" not in t or "PowerupKind.Weight" not in t or "PowerupKind.Shield" not in t:
         errors.append("fidelity regression: Space Bash special item pool incomplete")
+    for icon in ('kind == PowerupKind.Wumpa ? "+"', 'kind == PowerupKind.SpeedBoots ? ">>"', 'kind == PowerupKind.SlowZap ? "Z"', 'kind == PowerupKind.Weight ? "500"'):
+        if icon not in t:
+            errors.append(f"visual regression: readable pickup icon missing {icon}")
+    if "CreatePowerupIcon" not in t or t.count(".sharedMaterial") < 5:
+        errors.append("visual/mobile regression: pickup readability or material sharing disappeared")
 
 crate = files.get("CarryableCrate.cs")
 if crate:
