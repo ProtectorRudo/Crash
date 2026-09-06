@@ -152,7 +152,7 @@ namespace BoxBash
             skyWall.transform.SetParent(session);
             skyWall.transform.position = new Vector3(0f, 8f, 35f);
             skyWall.transform.localScale = new Vector3(52f, 26f, 0.4f);
-            skyWall.GetComponent<Renderer>().material = sky;
+            skyWall.GetComponent<Renderer>().sharedMaterial = sky;
             Destroy(skyWall.GetComponent<Collider>());
 
             Material buildingA = Mat(new Color(0.045f, 0.050f, 0.085f), 0.18f, 0.22f);
@@ -176,7 +176,7 @@ namespace BoxBash
                 building.transform.SetParent(session);
                 building.transform.position = new Vector3(x, height * 0.5f - 3.6f, z);
                 building.transform.localScale = new Vector3(width, height, depth);
-                building.GetComponent<Renderer>().material = (i % 2 == 0) ? buildingA : buildingB;
+                building.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? buildingA : buildingB;
                 Destroy(building.GetComponent<Collider>());
 
                 Material windowMat = i % 3 == 0 ? windowPink : (i % 3 == 1 ? windowCyan : windowWarm);
@@ -189,7 +189,7 @@ namespace BoxBash
                     float localY = -0.38f + (row + 0.75f) / rows * 0.76f;
                     windows.transform.localPosition = new Vector3(0f, localY, -0.505f);
                     windows.transform.localScale = new Vector3(0.72f, 0.045f, 0.025f);
-                    windows.GetComponent<Renderer>().material = windowMat;
+                    windows.GetComponent<Renderer>().sharedMaterial = windowMat;
                     Destroy(windows.GetComponent<Collider>());
                 }
 
@@ -200,7 +200,7 @@ namespace BoxBash
                     mast.transform.SetParent(building.transform, false);
                     mast.transform.localPosition = new Vector3(0f, 0.62f, 0f);
                     mast.transform.localScale = new Vector3(0.035f, 0.28f, 0.035f);
-                    mast.GetComponent<Renderer>().material = windowPink;
+                    mast.GetComponent<Renderer>().sharedMaterial = windowPink;
                     Destroy(mast.GetComponent<Collider>());
                 }
             }
