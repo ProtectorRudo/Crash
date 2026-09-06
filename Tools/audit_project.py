@@ -52,6 +52,8 @@ if bootstrap_parts:
     t = "\n".join(p.read_text(encoding="utf-8-sig") for p in bootstrap_parts)
     if "AddComponent<ThrowGuide>" in t:
         errors.append("fidelity regression: visible throw guide re-enabled")
+    if "AddComponent<AudioListener>" not in t:
+        errors.append("runtime regression: generated camera has no AudioListener")
     for kind in ("CrateKind.TNT", "CrateKind.Nitro", "CrateKind.Heavy", "CrateKind.Gift"):
         if kind not in t:
             errors.append(f"fidelity regression: missing {kind}")
@@ -66,7 +68,7 @@ if crate:
     if "kind != CrateKind.Nitro" not in t:
         errors.append("fidelity regression: Nitro became safely pickable")
 
-manifest = (ROOT / "Packages" / "manifest.json")
+manifest = ROOT / "Packages" / "manifest.json"
 if manifest.exists():
     mt = manifest.read_text(encoding="utf-8")
     for module in ("com.unity.modules.physics", "com.unity.modules.particlesystem", "com.unity.modules.androidjni"):

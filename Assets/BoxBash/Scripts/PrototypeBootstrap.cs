@@ -85,6 +85,7 @@ namespace BoxBash
             go.tag = "MainCamera";
             go.transform.SetParent(session);
             Camera cam = go.AddComponent<Camera>();
+            go.AddComponent<AudioListener>();
             cam.transform.position = new Vector3(0f, 13.4f, -11.2f);
             cam.transform.rotation = Quaternion.Euler(50.5f, 0f, 0f);
             cam.fieldOfView = 42f;
@@ -168,6 +169,5 @@ namespace BoxBash
             planet.GetComponent<Renderer>().material = Mat(new Color(0.22f, 0.30f, 0.52f), 0f, 0.34f);
             Destroy(planet.GetComponent<Collider>());
         }
-
     }
 }
