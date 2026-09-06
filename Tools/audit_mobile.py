@@ -33,6 +33,8 @@ for needle in (
     "flickMinPixels * scale",
     "flickMaxPixels * scale",
     "heldFor >= 0.045f",
+    "contextActionThisPointer = true",
+    "!contextActionThisPointer && heldFor",
 ):
     if needle not in controls:
         errors.append(f"touch regression: missing {needle}")
@@ -78,4 +80,4 @@ if errors:
         print("-", error)
     sys.exit(1)
 
-print("MOBILE AUDIT OK — resolution-scaled touch, safe-area HUD, 60 Hz physics and Android builders checked")
+print("MOBILE AUDIT OK — resolution-scaled touch, gesture exclusivity, safe-area HUD, 60 Hz physics and Android builders checked")
