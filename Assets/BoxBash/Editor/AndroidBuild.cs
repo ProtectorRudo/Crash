@@ -18,9 +18,11 @@ namespace BoxBash.EditorTools
         [MenuItem("BOX BASH/Build Android APK (Development)")]
         public static void BuildDevelopmentApk() => BuildApk(DevelopmentOutput, BuildOptions.Development);
 
-        // Compatibility with the previous workflow: default to the representative phone-test build.
+        public static void BuildPhoneTestApkBatch() => BuildPhoneTestApk();
+        public static void BuildDevelopmentApkBatch() => BuildDevelopmentApk();
+
         [MenuItem("BOX BASH/Build Android APK")]
-        public static void BuildLegacyApk() => BuildPhoneTestApk();
+        public static void BuildLegacyApk() => BuildDevelopmentApk();
 
         private static void BuildApk(string output, BuildOptions options)
         {
@@ -29,14 +31,15 @@ namespace BoxBash.EditorTools
 
             Directory.CreateDirectory("Builds");
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(Scene, true) };
-
             ConfigurePlayerSettings();
 
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
             {
                 if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android))
-                    throw new System.Exception("Unity no pudo cambiar la plataforma activa a Android.");
+                    throw new System.Exception("Unity no pudo cambiar la plataforma activa a Android. Verificá Android Build Support + SDK/NDK + OpenJDK en Unity Hub.");
             }
+
+            EditorUserBuildSettings.buildAppBundle = false;
 
             BuildPlayerOptions build = new BuildPlayerOptions
             {
@@ -52,17 +55,16 @@ namespace BoxBash.EditorTools
                 throw new System.Exception($"Build Android falló: {summary.result} ({summary.totalErrors} errores)");
 
             string mode = (options & BuildOptions.Development) != 0 ? "DEVELOPMENT" : "PHONE TEST";
-            Debug.Log($"BOX BASH APK {mode} OK: {Path.GetFullPath(output)} | {summary.totalSize / (1024f * 1024f):0.0} MB");
-            EditorUtility.RevealInFinder(output);
+            Debug.Log($"BOX BASH APK {mode} READY: {Path.GetFullPath(output)} | {summary.totalSize / (1024f * 1024f):0.0} MB | {summary.totalTime}");
         }
 
         private static void ConfigurePlayerSettings()
         {
-            PlayerSettings.companyName = "BoxBash";
+            PlayerSettings.companyName = "ProtectorRudo";
             PlayerSettings.productName = "Box Bash";
-            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.boxbash.spacecrate");
-            PlayerSettings.bundleVersion = "0.7.0";
-            PlayerSettings.Android.bundleVersionCode = 7;
+            PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.protectorrudo.boxbash");
+            PlayerSettings.bundleVersion = "0.7.1";
+            PlayerSettings.Android.bundleVersionCode = 8;
 
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToPortrait = false;
@@ -72,9 +74,12 @@ namespace BoxBash.EditorTools
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
-            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
-            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+
+            // First-device truth gate: mirror the PogoDom approach and let the Unity Hub
+            // Android toolchain choose its supported backend/architectures. We can harden
+            // release architecture/backend after the APK is running on a real phone.
             EditorUserBuildSettings.buildAppBundle = false;
         }
     }
 }
+#endif
