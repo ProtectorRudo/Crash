@@ -27,8 +27,9 @@ namespace BoxBash.EditorTools
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
 
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
-            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             EditorUserBuildSettings.buildAppBundle = false;
 
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
