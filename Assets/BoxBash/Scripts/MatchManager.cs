@@ -105,7 +105,7 @@ namespace BoxBash
         {
             if (state == MatchState.Finished) return;
             state = MatchState.Finished;
-            result = winner == Human ? "¡GANASTE!" : "ELIMINADO";
+            result = winner == Human ? "¡GANASTE!" : (Human != null && Human.IsAlive ? "PERDISTE" : "ELIMINADO");
             winner?.Celebrate();
             crateDirector?.SetActive(false);
             for (int i = 0; i < fighters.Count; i++) if (fighters[i] != null) fighters[i].SetControlEnabled(false);
@@ -121,8 +121,8 @@ namespace BoxBash
         private void OnGUI()
         {
             float s = Mathf.Clamp(Screen.width / 1080f, 0.66f, 1.35f);
-            DrawTimer(s);
             DrawFighterHud(s);
+            DrawTimer(s);
 
             if (state == MatchState.Countdown)
             {
@@ -131,12 +131,12 @@ namespace BoxBash
                 GUI.Box(new Rect(Screen.width * 0.37f, Screen.height * 0.34f, Screen.width * 0.26f, Screen.height * 0.16f), text);
             }
 
-            if (state == MatchState.Playing && Time.time - matchStartedAt < 6.5f)
+            if (state == MatchState.Playing && Time.time - matchStartedAt < 5.0f)
             {
-                GUI.skin.label.fontSize = Mathf.RoundToInt(22 * s);
+                GUI.skin.label.fontSize = Mathf.RoundToInt(20 * s);
                 GUI.skin.label.alignment = TextAnchor.MiddleCenter;
-                GUI.Label(new Rect(Screen.width * 0.15f, Screen.height - 64f * s, Screen.width * 0.70f, 42f * s),
-                    "Arrastrá: mover   •   toque: saltar   •   doble toque: agarrar/lanzar   •   flick corto: patear");
+                GUI.Label(new Rect(Screen.width * 0.12f, Screen.height - 58f * s, Screen.width * 0.76f, 38f * s),
+                    "Arrastrá: mover   •   toque: saltar   •   doble toque: agarrar/lanzar   •   flick: patear");
             }
 
             if (state == MatchState.Finished)
@@ -151,47 +151,74 @@ namespace BoxBash
 
         private void DrawTimer(float s)
         {
-            GUI.skin.box.fontSize = Mathf.RoundToInt(34 * s);
+            float w = 104f * s;
+            float h = 58f * s;
+            Rect rect = new Rect((Screen.width - w) * 0.5f, 10f * s, w, h);
+            GUI.color = new Color(0.055f, 0.040f, 0.075f, 0.96f);
+            GUI.Box(rect, GUIContent.none);
+            GUI.color = new Color(1f, 0.52f, 0.08f, 1f);
+            GUI.skin.label.fontSize = Mathf.RoundToInt(36 * s);
+            GUI.skin.label.fontStyle = FontStyle.Bold;
+            GUI.skin.label.alignment = TextAnchor.MiddleCenter;
             string time = state == MatchState.Countdown ? "90" : Mathf.CeilToInt(remaining).ToString("00");
-            GUI.Box(new Rect(Screen.width * 0.445f, 14f, Screen.width * 0.11f, 54f * s), time);
+            GUI.Label(rect, time);
+            GUI.skin.label.fontStyle = FontStyle.Normal;
+            GUI.color = Color.white;
         }
 
         private void DrawFighterHud(float s)
         {
-            for (int i = 0; i < fighters.Count; i++)
+            float gap = 7f * s;
+            float centerGap = 122f * s;
+            float outer = 10f * s;
+            float available = Screen.width - outer * 2f - centerGap - gap * 2f;
+            float w = Mathf.Min(218f * s, available * 0.25f);
+            float h = 60f * s;
+            float left1 = outer;
+            float left2 = left1 + w + gap;
+            float right2 = Screen.width - outer - w;
+            float right1 = right2 - gap - w;
+            float[] xs = { left1, left2, right1, right2 };
+
+            for (int i = 0; i < fighters.Count && i < 4; i++)
             {
                 ArenaFighter f = fighters[i];
                 if (f == null) continue;
-                float w = 238f * s;
-                float h = 54f * s;
-                float x = (i % 2 == 0) ? 20f * s : Screen.width - w - 20f * s;
-                float y = (i < 2) ? 14f : Screen.height - h - 14f * s;
-                DrawOneHud(f, new Rect(x, y, w, h), s, i % 2 == 1);
+                DrawOneHud(f, new Rect(xs[i], 10f * s, w, h), s);
             }
         }
 
-        private void DrawOneHud(ArenaFighter f, Rect rect, float s, bool rightAligned)
+        private void DrawOneHud(ArenaFighter f, Rect rect, float s)
         {
-            GUI.color = new Color(0.06f, 0.07f, 0.10f, 0.90f);
+            GUI.color = new Color(0.035f, 0.040f, 0.060f, 0.94f);
             GUI.Box(rect, GUIContent.none);
             GUI.color = Color.white;
 
-            GUI.skin.label.fontSize = Mathf.RoundToInt(18 * s);
-            GUI.skin.label.alignment = rightAligned ? TextAnchor.UpperRight : TextAnchor.UpperLeft;
-            GUI.Label(new Rect(rect.x + 8f, rect.y + 2f, rect.width - 16f, 22f * s), f.displayName + (f.IsAlive ? "" : "  X"));
+            float portrait = 34f * s;
+            Rect portraitRect = new Rect(rect.x + 7f * s, rect.y + 7f * s, portrait, portrait);
+            GUI.color = f.IsAlive ? f.playerColor : new Color(0.22f, 0.22f, 0.24f);
+            GUI.DrawTexture(portraitRect, Texture2D.whiteTexture);
+            GUI.color = Color.white;
 
-            Rect back = new Rect(rect.x + 9f, rect.y + 29f * s, rect.width - 18f, 13f * s);
-            GUI.color = new Color(0.16f, 0.17f, 0.19f, 1f);
+            GUI.skin.label.fontSize = Mathf.RoundToInt(15 * s);
+            GUI.skin.label.fontStyle = FontStyle.Bold;
+            GUI.skin.label.alignment = TextAnchor.UpperLeft;
+            GUI.Label(new Rect(portraitRect.xMax + 7f * s, rect.y + 3f * s, rect.width - portrait - 18f * s, 21f * s),
+                f.displayName + (f.IsAlive ? "" : "  X"));
+            GUI.skin.label.fontStyle = FontStyle.Normal;
+
+            Rect back = new Rect(portraitRect.xMax + 7f * s, rect.y + 27f * s, rect.width - portrait - 18f * s, 12f * s);
+            GUI.color = new Color(0.10f, 0.10f, 0.12f, 1f);
             GUI.DrawTexture(back, Texture2D.whiteTexture);
-            GUI.color = f.IsAlive ? f.playerColor : new Color(0.25f, 0.25f, 0.25f);
+            GUI.color = f.IsAlive ? new Color(0.35f, 0.95f, 0.22f, 1f) : new Color(0.22f, 0.22f, 0.22f, 1f);
             float ratio = Mathf.Clamp01(f.Health / Mathf.Max(1f, f.maxHealth));
             GUI.DrawTexture(new Rect(back.x, back.y, back.width * ratio, back.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
             if (!string.IsNullOrEmpty(f.StatusText))
             {
-                GUI.skin.label.fontSize = Mathf.RoundToInt(12 * s);
-                GUI.Label(new Rect(rect.x + 8f, rect.y + 39f * s, rect.width - 16f, 14f * s), f.StatusText);
+                GUI.skin.label.fontSize = Mathf.RoundToInt(11 * s);
+                GUI.Label(new Rect(portraitRect.xMax + 7f * s, rect.y + 40f * s, rect.width - portrait - 18f * s, 16f * s), f.StatusText);
             }
         }
 
