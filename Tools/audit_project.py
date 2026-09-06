@@ -104,7 +104,11 @@ if pickup:
 fighter = files.get("ArenaFighter.cs")
 if fighter:
     t = fighter.read_text(encoding="utf-8-sig")
-    for needle in ("shieldCharges = 1", "PassWeightTo", "ReceiveWeight", "DropCrushingWeight", "speedBoostUntil = 0f"):
+    for needle in (
+        "shieldCharges = 1", "PassWeightTo", "ReceiveWeight", "DropCrushingWeight",
+        "speedBoostUntil = 0f", "NearestKickableOpponent", "opponent.ApplyDamage(8f",
+        "bootJumpMultiplier = Time.time < speedBoostUntil ? 1.18f : 1f",
+    ):
         if needle not in t:
             errors.append(f"fidelity regression: fighter rule missing {needle}")
 
