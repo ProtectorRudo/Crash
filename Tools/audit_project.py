@@ -29,6 +29,8 @@ for p in files.values():
         errors.append(f"brace mismatch: {p.name}")
     if stripped.count("(") != stripped.count(")"):
         errors.append(f"paren mismatch: {p.name}")
+    if "SetParent(owner:" in text:
+        errors.append(f"invalid Transform.SetParent named argument returned: {p.name}")
 
 for name in ("BotBrain.cs", "CarryableCrate.cs", "ArenaFighter.cs"):
     if name in files and "FindObjectsOfType" in files[name].read_text(encoding="utf-8-sig"):
@@ -63,6 +65,40 @@ if bootstrap_parts:
         errors.append("fidelity regression: visible throw guide re-enabled")
     if "AddComponent<AudioListener>" not in t:
         errors.append("runtime regression: generated camera has no AudioListener")
+
+bootstrap = files.get("PrototypeBootstrap.cs")
+if bootstrap:
+    t = bootstrap.read_text(encoding="utf-8-sig")
+    for needle in ("Purple Skyline Backdrop", "Future Tower", "Neon Windows"):
+        if needle not in t:
+            errors.append(f"visual regression: rooftop skyline element missing {needle}")
+    if "Distant Planet" in t or 'star.name = "Star"' in t:
+        errors.append("visual regression: outer-space backdrop returned")
+    if "cam.fieldOfView = 40f" not in t or "Quaternion.Euler(51.8f" not in t:
+        errors.append("visual regression: rooftop camera framing changed")
+
+arena = files.get("PrototypeBootstrapArena.cs")
+if arena:
+    t = arena.read_text(encoding="utf-8-sig")
+    for needle in ("Recessed Deck Face", "Deck Hazard Stripe", "Rail Hazard Stripe"):
+        if needle not in t:
+            errors.append(f"visual regression: metallic arena detail missing {needle}")
+    if "shadow.transform.SetParent(parent.parent, false)" not in t:
+        errors.append("visual regression: fighter shadow no longer stays on fighter root")
+
+match = files.get("MatchManager.cs")
+if match:
+    t = match.read_text(encoding="utf-8-sig")
+    if "float[] xs = { left1, left2, right1, right2 }" not in t:
+        errors.append("visual regression: four-player HUD is no longer top-aligned")
+    if "new Color(1f, 0.52f, 0.08f, 1f)" not in t:
+        errors.append("visual regression: central orange timer styling disappeared")
+
+breakable = files.get("BreakableTile.cs")
+if breakable:
+    t = breakable.read_text(encoding="utf-8-sig")
+    if "GetComponentsInChildren<Collider>(true)" not in t or "GetComponentsInChildren<Renderer>(true)" not in t:
+        errors.append("visual/runtime regression: detailed tile children can remain after a blast")
 
 content = files.get("PrototypeBootstrapContent.cs")
 if content:
@@ -133,4 +169,4 @@ if errors:
         print("-", error)
     sys.exit(1)
 
-print(f"AUDIT OK — {len(files)} gameplay scripts checked + Space Bash fidelity gates")
+print(f"AUDIT OK — {len(files)} gameplay scripts checked + Space Bash gameplay/visual fidelity gates")
