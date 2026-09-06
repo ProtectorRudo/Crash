@@ -18,13 +18,18 @@ namespace BoxBash
 
         private void Update()
         {
-            Vector2 keyboard = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            Vector2 keyboard = Vector2.zero;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) keyboard.x -= 1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) keyboard.x += 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) keyboard.y -= 1f;
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) keyboard.y += 1f;
             if (keyboard.sqrMagnitude > 0.01f)
             {
                 fighter.SetMoveInput(Vector2.ClampMagnitude(keyboard, 1f));
                 if (Input.GetKeyDown(KeyCode.Space)) fighter.ContextAction();
                 return;
             }
+            if (Input.GetKeyDown(KeyCode.Space)) fighter.ContextAction();
 
             if (Input.touchCount > 0)
             {
