@@ -12,6 +12,7 @@ namespace BoxBash
         private Coroutine reaction;
         private bool celebrating;
         private float shieldPulseUntil;
+        private GameObject weightMarker;
 
         public void Bind(ArenaFighter owner, Transform visualRoot)
         {
@@ -23,6 +24,12 @@ namespace BoxBash
 
         private void Update()
         {
+            if (weightMarker != null && weightMarker.activeSelf)
+            {
+                weightMarker.transform.localPosition = new Vector3(0f, 2.05f + Mathf.Sin(Time.time * 8f) * 0.08f, 0f);
+                weightMarker.transform.localRotation = Quaternion.Euler(0f, Time.time * 90f, 0f);
+            }
+
             if (visual == null || fighter == null || celebrating) return;
             float movement = fighter.MoveInput.magnitude;
             float bob = Mathf.Abs(Mathf.Sin(Time.time * 12f)) * 0.045f * movement;
@@ -42,12 +49,40 @@ namespace BoxBash
         public void Hit() => Punch(new Vector3(1.18f, 0.80f, 1.18f), 0.17f);
         public void Jump() => Punch(new Vector3(0.90f, 1.12f, 0.90f), 0.15f);
         public void Kick() => Punch(new Vector3(1.10f, 0.93f, 0.90f), 0.13f);
-        public void Shield() => shieldPulseUntil = Time.time + 5.5f;
+        public void Shield(float duration) => shieldPulseUntil = Time.time + duration;
         public void Flatten() => Punch(new Vector3(1.36f, 0.54f, 1.36f), 0.52f);
+
+        public void SetWeight(bool active)
+        {
+            if (active && weightMarker == null)
+            {
+                weightMarker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                weightMarker.name = "Weight Countdown Marker";
+                weightMarker.transform.SetParent(transform, false);
+                weightMarker.transform.localScale = new Vector3(0.46f, 0.24f, 0.46f);
+                Renderer renderer = weightMarker.GetComponent<Renderer>();
+                renderer.material.color = new Color(0.34f, 0.37f, 0.42f);
+                Destroy(weightMarker.GetComponent<Collider>());
+
+                GameObject label = new GameObject("500");
+                label.transform.SetParent(weightMarker.transform, false);
+                label.transform.localPosition = new Vector3(0f, 0f, -0.56f);
+                label.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                TextMesh mesh = label.AddComponent<TextMesh>();
+                mesh.text = "500";
+                mesh.anchor = TextAnchor.MiddleCenter;
+                mesh.alignment = TextAlignment.Center;
+                mesh.fontSize = 48;
+                mesh.characterSize = 0.13f;
+                mesh.color = Color.white;
+            }
+            if (weightMarker != null) weightMarker.SetActive(active);
+        }
 
         public void Eliminate()
         {
             if (visual == null) return;
+            if (weightMarker != null) weightMarker.SetActive(false);
             StopAllCoroutines();
             StartCoroutine(EliminationRoutine());
         }
